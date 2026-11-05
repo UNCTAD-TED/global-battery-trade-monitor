@@ -1,0 +1,83 @@
+/* Motion v6 (docs/design/MOTION_V6.md): tokens, layer changes (View Transitions), the story's chapter changes, the
+   explorer's popovers, panel and views. The same values are in src/motion.js (MS, EASE). Only transform and opacity
+   are animated here. No bounce, no overshoot, no parallax, no glow. Loaded after style.css: rules here override it
+   where they say so. Off switch: MOTION_ON in src/motion.js (sets html[data-motion="off"]). */
+:root{
+  --mo-micro:150ms; --mo-ui:260ms; --mo-ui-l:360ms; --mo-data:520ms; --mo-camera:900ms;
+  --mo-out:cubic-bezier(.2,.7,.2,1);      /* arriving: fast start, long soft landing */
+  --mo-inout:cubic-bezier(.45,0,.25,1);   /* moving from A to B */
+  --mo-in:cubic-bezier(.4,0,1,1);         /* leaving */
+}
+html[data-motion="off"]{--mo-micro:0ms;--mo-ui:0ms;--mo-ui-l:0ms;--mo-data:0ms;--mo-camera:0ms}
+html[data-motion="off"] *,html[data-motion="off"] *::before,html[data-motion="off"] *::after{transition:none!important;animation:none!important}
+@media (prefers-reduced-motion:reduce){
+  :root{--mo-micro:0ms;--mo-ui:0ms;--mo-ui-l:0ms;--mo-data:0ms;--mo-camera:0ms}
+  ::view-transition-group(*),::view-transition-old(*),::view-transition-new(*){animation:none!important}
+}
+
+/* ── Layers: home, a question, the story, the explorer (src/transitions.js swap) ──
+   The old page leaves quickly; the new one arrives with a slight move: up when going deeper, sideways between
+   questions (the direction of Next / Previous). The header stays put. A question's picture grows into the page's
+   picture and back (q-visual); the story's map becomes the explorer's map and back (map-stage). */
+#main-header{view-transition-name:site-header}
+::view-transition-group(root){animation-duration:var(--mo-ui-l)}
+::view-transition-old(root){animation:mo-out var(--mo-micro) var(--mo-in) both}
+::view-transition-new(root){animation:mo-rise var(--mo-ui) var(--mo-out) 60ms both}
+html[data-vt-dir="fwd"]::view-transition-new(root){animation-name:mo-from-right}
+html[data-vt-dir="back"]::view-transition-new(root){animation-name:mo-from-left}
+html[data-vt="back"]::view-transition-new(root){animation-name:mo-sink}
+html[data-vt="view"]::view-transition-old(root){animation:mo-out var(--mo-micro) var(--mo-in) both}
+html[data-vt="view"]::view-transition-new(root){animation:mo-fade var(--mo-ui) var(--mo-out) 40ms both}
+::view-transition-group(site-header){animation-duration:var(--mo-ui);animation-timing-function:var(--mo-inout)}
+::view-transition-old(site-header),::view-transition-new(site-header){animation-duration:var(--mo-ui)}
+::view-transition-group(q-visual),::view-transition-group(map-stage){animation-duration:var(--mo-ui-l);animation-timing-function:var(--mo-inout)}
+::view-transition-old(q-visual),::view-transition-new(q-visual),
+::view-transition-old(map-stage),::view-transition-new(map-stage){height:100%;object-fit:contain;overflow:clip}
+::view-transition-old(q-visual),::view-transition-old(map-stage){animation:mo-out var(--mo-ui) var(--mo-in) both}
+::view-transition-new(q-visual),::view-transition-new(map-stage){animation:mo-fade var(--mo-ui-l) var(--mo-out) both}
+@keyframes mo-out{to{opacity:0}}
+@keyframes mo-fade{from{opacity:0}}
+@keyframes mo-rise{from{opacity:0;transform:translateY(10px)}}
+@keyframes mo-sink{from{opacity:0;transform:translateY(-8px)}}
+@keyframes mo-from-right{from{opacity:0;transform:translateX(18px)}}
+@keyframes mo-from-left{from{opacity:0;transform:translateX(-18px)}}
+
+/* ── Story: one sequence per chapter (src/storyMode.js): the text crossfades (the old chapter fades out where it was,
+   the new one lifts in), the progress dashes fill toward the new chapter, the chart crossfades and its marks grow;
+   the map camera, the corridors and the labels follow on the map (src/storyMap.js). */
+.st-scene.is-active{animation:none}                       /* replaces style.css np-fade: the JS crossfade does it */
+.st-steps{position:relative}
+.mo-leaving{display:block!important}
+.st-scene.mo-leaving .st-headline{display:block}
+.st-stage{position:relative}
+.st-chart-ghost{position:absolute;z-index:4;pointer-events:none;overflow:hidden;background:var(--white)}
+/* the dashes: each fills from the left; going forward they fill one after the other, going back they empty */
+.st-cell{background:var(--grey-border) content-box;position:relative}
+.st-cell.on,.st-cell.now{background-color:var(--grey-border)}
+.st-cell i{display:block;width:100%;height:100%;background:var(--un-blue-light);transform:scaleX(0);transform-origin:left center;transition:transform var(--mo-ui) var(--mo-out) var(--d,0ms),background-color var(--mo-micro) linear var(--d,0ms)}
+.st-cell.on i,.st-cell.now i{transform:none}
+.st-cell.now i{background:var(--un-blue)}
+.st-cell:hover i{background:var(--un-blue-text)}
+.st-cell:hover:not(.on):not(.now){background-color:var(--grey)}
+
+/* ── Explorer ── */
+/* popovers grow from their button (opening); they close at once */
+.popover{transform-origin:top left;transition:opacity var(--mo-micro) var(--mo-out),transform var(--mo-ui) var(--mo-out)}
+.pop-menu{transform-origin:top right}
+@starting-style{.popover:not(.hidden){opacity:0;transform:translateY(-6px) scale(.97)}}
+/* the details panel slides in from the right and back out (desktop); its content crossfades (src/main.js) */
+html:not(.phone) #side{transition:opacity var(--mo-ui) var(--mo-out),transform var(--mo-ui) var(--mo-out),display var(--mo-ui) allow-discrete}
+html:not(.phone) #side.closed{opacity:0;transform:translateX(28px)}
+@starting-style{html:not(.phone) #side:not(.closed){opacity:0;transform:translateX(28px)}}
+.side-open{transition:opacity var(--mo-ui) var(--mo-out) 80ms}
+@starting-style{.side-open:not(.hidden){opacity:0}}
+/* phone: the details sheet moves between peek, half and full with the UI easing */
+html.phone #side{transition:height var(--mo-ui) var(--mo-out)}
+/* hints arrive, they do not pop */
+.first-hint,.handover-hint{animation:mo-hint var(--mo-ui) var(--mo-out) var(--mo-ui-l) backwards}
+@keyframes mo-hint{from{opacity:0;transform:translate(-50%,-4px)}to{opacity:1;transform:translate(-50%,0)}}
+/* the ranked list's bars follow their value */
+.cl-bar{transition:width var(--mo-ui) var(--mo-out),opacity var(--mo-micro)}
+/* the legend folds and unfolds */
+.legend #legend-content{transition:opacity var(--mo-micro) var(--mo-out)}
+@media (prefers-reduced-motion:reduce){.st-cell i{transition:none}}

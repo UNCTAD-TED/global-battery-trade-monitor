@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <script>/* the phone layout is chosen before the first paint (as in the Non-plastic dashboard; same query in src/config.js, PHONE_Q) */
+    (function(){try{var d=document.documentElement,m=matchMedia,p=m("(max-width: 700px), (max-width: 1050px) and (pointer: coarse), (max-height: 500px) and (pointer: coarse)").matches;d.classList.toggle("phone",p);}catch(e){}})();</script>
+    <title>Global Battery Trade Monitor</title>
+    <meta name="description" content="Trade in batteries (HS 8507) and spent batteries (HS 8549.11–19; 8548.10 before HS 2022), 2016–2024. Source: UN Comtrade; UNCTAD calculations.">
+    <link rel="icon" href="assets/unctad-icon.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <a class="skip-link" href="#map-area" data-act="explore">Skip to main content</a>
+
+    <!-- ── Header: chevron, title, search, economies, text links; the 5px UN blue band under it ── -->
+    <header id="main-header">
+        <div class="header-title">
+            <button class="brand" type="button" data-act="home" title="Home: the questions" aria-label="Global Battery Trade Monitor: home">
+                <img src="assets/unctad-icon.svg" alt="" class="header-logo">
+            </button>
+            <div class="header-text">
+                <p class="hdr-title">Global Battery Trade Monitor <span class="proto">Prototype</span></p>
+                <p class="hdr-sub">UNCTAD &middot; Trade in batteries (HS&nbsp;8507) and spent batteries (HS&nbsp;8549.1 / 8548.10), 2016&ndash;2024<span class="header-sources"> &middot; Source: UN&nbsp;Comtrade</span></p>
+                <nav id="crumbs" class="crumbs hidden" aria-label="Breadcrumb"></nav>
+            </div>
+            <button id="btn-menu" class="hdr-icon" type="button" aria-label="Menu" aria-expanded="false" aria-controls="header-actions"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+            <div class="header-actions" id="header-actions">
+                <div class="search hdr-search" id="search">
+                    <input id="search-input" type="search" placeholder="Find an economy&hellip;" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="search-list" aria-label="Find an economy">
+                    <ul id="search-list" class="search-list hidden" role="listbox" aria-label="Economies"></ul>
+                </div>
+                <nav class="mode-tabs" aria-label="Mode">
+                    <button class="btn-line mode-tab" type="button" data-act="home" data-mode="home">Home</button>
+                    <button class="btn-line mode-tab" type="button" data-act="stories" data-mode="story">Story</button>
+                    <button class="btn-line mode-tab" type="button" data-act="explore" data-mode="explore">Explore the data</button>
+                </nav>
+                <button class="btn-line" type="button" data-act="methodology">Methodology</button>
+                <button class="btn-line hdr-search" type="button" data-act="copy-link" title="Copy a link to exactly this view">Copy link</button>
+            </div>
+        </div>
+    </header>
+
+    <main id="explorer">
+        <h1 class="sr-only">Global Battery Trade Monitor: explore the data</h1>
+        <!-- v4 (docs/design/EXPLORER_V4.md): the stage fills the screen; a control bar, a view switcher, the legend
+             and the details panel float over it; the notes strip is its last line -->
+        <div id="stage">
+            <section class="map-area" id="map-area" tabindex="-1" aria-label="Map, matrix, two reports or table">
+                <div class="map-body" id="map-body">
+                    <div id="map-container" role="region" aria-label="Map of directed trade flows"></div>
+                    <div id="matrix-container" class="view-pane hidden"></div>
+                    <div id="gap-container" class="view-pane hidden"></div>
+                    <div id="table-container" class="view-pane hidden" role="region" aria-label="Table of the flows in view"></div>
+                    <div id="map-estbadge" class="mapmsg hidden" role="note"></div>
+                </div>
+                <div id="sr-status" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+            </section>
+
+            <!-- Control bar: what / where / when / how -->
+            <div class="ctlbar" id="ctlbar" role="toolbar" aria-label="Product, economies, year, measure and menu">
+                <div class="ctl" id="ctl-product-w">
+                    <button class="ctl-btn" id="ctl-product" type="button" aria-expanded="false" aria-controls="pop-product" aria-haspopup="dialog"><span class="ctl-k">Product</span><span class="ctl-v" id="ctl-product-v">&mdash;</span></button>
+                    <div class="popover pop-product hidden" id="pop-product" role="dialog" aria-label="Choose the product">
+                        <div id="dock">
+                            <div class="dock-head"><span class="cap" id="dock-cap">What</span><div class="tb-seg" id="group-tabs" role="group" aria-labelledby="dock-cap"></div></div>
+                            <div class="dock-cols">
+                                <div class="pizza-wrap"><svg id="pizza" class="pz" viewBox="-200 -200 400 400" role="img" aria-label="Product breakdown"></svg><p class="pizza-note" id="pizza-note"></p></div>
+                                <div class="dock-list">
+                                    <div id="slice-list" class="slice-list" role="group" aria-label="Product detail"></div>
+                                    <p class="dock-links"><button class="btn-line" type="button" data-act="visibility">Spent batteries by HS code <span aria-hidden="true">&rarr;</span></button></p>
+                                    <p class="dock-note" id="dock-note"></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="ctl" id="ctl-eco-w">
+                    <button class="ctl-btn" id="ctl-eco" type="button" aria-expanded="false" aria-controls="pop-eco" aria-haspopup="dialog"><span class="ctl-k">Economies</span><span class="ctl-v" id="ctl-eco-v">All economies</span></button>
+                    <span id="scope-chip" class="scope-chip hidden"></span>
+                    <div class="popover pop-eco hidden" id="pop-eco" role="dialog" aria-label="Choose the economies">
+                        <label class="pop-lab" for="scope-sel">Economies shown</label>
+                        <select id="scope-sel" class="tb-sel" data-ctl="scope" title="A region (both ends in it) or a group (at least one end in it)"></select>
+                        <label class="pop-lab" for="eco-filter">Find an economy</label>
+                        <div class="search"><input id="eco-filter" type="search" placeholder="Economy&hellip;" autocomplete="off" aria-controls="eco-list" aria-describedby="eco-list-cap"></div>
+                        <p class="pop-cap" id="eco-list-cap"></p>
+                        <ul class="eco-list" id="eco-list" aria-labelledby="eco-list-cap"></ul>
+                    </div>
+                </div>
+                <div class="ctl" id="ctl-year-w">
+                    <button class="ctl-btn" id="ctl-year" type="button" aria-expanded="false" aria-controls="pop-year" aria-haspopup="dialog"><span class="ctl-k">Year</span><span class="ctl-v" id="ctl-year-v">&mdash;</span></button>
+                    <div class="popover pop-year hidden" id="pop-year" role="dialog" aria-label="Choose the year">
+                        <section id="timeline" aria-label="Year">
+                            <button id="play" class="icon" type="button" aria-label="Play the years" title="Play the years">&#9654;</button>
+                            <div class="tl-year"><span class="cap">Year</span><b id="year-out"></b><span id="year-prov" class="prov"></span></div>
+                            <div id="tl" class="tl"></div>
+                        </section>
+                    </div>
+                </div>
+                <div class="tb-fld ctl-meas" id="meas-fld"><span class="sr-only" id="meas-cap">Measure</span><div class="tb-seg" id="meas" role="group" aria-labelledby="meas-cap"></div></div>
+                <div class="ctl" id="ctl-menu-w">
+                    <button class="ctl-btn ctl-menu" id="ctl-menu" type="button" aria-label="Menu" aria-expanded="false" aria-controls="pop-menu" aria-haspopup="dialog"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span class="ctl-v">Menu</span></button>
+                    <div class="popover pop-menu hidden" id="pop-menu" role="dialog" aria-label="Menu">
+                        <div id="basis-switch" class="tb-fld basis-switch hidden" role="group" aria-label="Reported or estimated values"></div>
+                        <div class="tb-fld"><span class="tb-cap" id="topn-cap">Flows on the map</span><div class="tb-seg" id="menu-topn" role="group" aria-labelledby="topn-cap"></div></div>
+                        <button class="menu-item" type="button" id="legend-toggle" aria-pressed="true">Legend on the map</button>
+                        <button class="menu-item" type="button" data-act="visibility">Spent batteries by HS code</button>
+                        <div class="menu-group" id="panel-tools"><span class="menu-cap">Download CSV</span>
+                            <button class="menu-item" type="button" data-act="csv-flows" title="All flows in the current selection, with source flags (CSV)">Flows in this view</button>
+                            <button class="menu-item" type="button" data-act="csv-totals" title="Totals by economy for this product, all years (CSV)">Economy totals</button>
+                            <button class="menu-item" type="button" data-act="csv-country" id="menu-csv-country" title="This economy's flows, all years (CSV)">This economy, all years</button>
+                            <button class="menu-item" type="button" data-act="csv-pair" id="menu-csv-pair" title="This pair's history (CSV)">This pair, all years</button>
+                        </div>
+                        <button class="menu-item" type="button" data-act="copy-link-menu">Copy link</button>
+                        <button class="menu-item" type="button" data-act="methodology">Methodology</button>
+                        <button class="menu-item" type="button" data-act="reset">Reset the view</button>
+                    </div>
+                </div>
+                <button id="story-return" class="btn-line story-return hidden" type="button"></button>
+                <a id="page-return" class="btn-line story-return hidden" href="#home"></a>
+            </div>
+
+            <!-- View switcher -->
+            <div class="viewsw" id="viewsw"><div class="tb-seg" id="view-tabs" role="group" aria-label="View"></div></div>
+
+            <!-- Legend and map tools -->
+            <div id="legend-panel" class="legend">
+                <span class="lg-t" aria-hidden="true">Legend</span>
+                <div id="legend-content"></div>
+                <button class="lg-x" id="legend-fold" type="button" aria-expanded="true" aria-controls="legend-content" aria-label="Fold the legend">&minus;</button>
+            </div>
+            <div class="zoomctl" id="zoomctl">
+                <button id="zin" type="button" aria-label="Zoom in" title="Zoom in">+</button>
+                <button id="zout" type="button" aria-label="Zoom out" title="Zoom out">&minus;</button>
+                <button id="fit-screen-btn" type="button" aria-label="Fit to screen" title="Whole world">&#8962;</button>
+            </div>
+
+            <!-- Details panel: a flow, an economy, or the summary of the selection -->
+            <aside id="side" class="side" aria-label="Details">
+                <div class="side-head">
+                    <span class="side-k" id="side-k">Details</span>
+                    <button id="side-toggle" class="side-toggle" type="button" aria-expanded="true" aria-controls="side-body"><span class="st-txt">Hide details</span> <span aria-hidden="true">&rsaquo;</span></button>
+                </div>
+                <div class="side-body" id="side-body">
+                    <section id="arc-modal" class="pair hidden" role="region" aria-labelledby="arc-modal-title">
+                        <div class="panel-header">
+                            <div class="panel-title-group">
+                                <p class="modal-kicker">Pair history: both directions, both reports</p>
+                                <h2 id="arc-modal-title" class="modal-title">&mdash;</h2>
+                                <p id="arc-modal-meta" class="sub">Pair history</p>
+                            </div>
+                            <div class="panel-acts">
+                                <button id="arc-export-btn" class="btn-line" type="button" title="Download this pair's history (CSV)">CSV</button>
+                                <button id="arc-modal-close" class="btn-x btn-close" type="button" aria-label="Close the pair history">&times;</button>
+                            </div>
+                        </div>
+                        <div id="arc-modal-body" class="pair-body" tabindex="0" role="region" aria-label="Pair history"></div>
+                    </section>
+                    <div id="world-panel" class="panel"></div>
+                    <div id="kpi-bar" role="region" aria-label="Key figures"><div class="kpi-inner" id="kpi-inner"></div></div>
+                    <div id="insight-panel" class="panel" role="region" aria-label="Economy panel">
+                        <div class="panel-header">
+                            <div class="panel-title-group">
+                                <h2 id="panel-country-name">&mdash;</h2>
+                                <div id="panel-country-meta" class="sub">&mdash;</div>
+                            </div>
+                            <div class="panel-acts">
+                                <button id="panel-export-btn" class="btn-line" type="button" title="Download this economy's flows, all years (CSV)">CSV</button>
+                                <button id="panel-close-btn" class="btn-x" type="button" title="Close" aria-label="Close the economy panel">&times;</button>
+                            </div>
+                        </div>
+                        <div id="panel-body" tabindex="0" role="region" aria-label="Economy details"></div>
+                    </div>
+                    <section id="corridor-list" aria-label="Top flows"></section>
+                </div>
+            </aside>
+            <button id="side-open" class="side-open hidden" type="button" aria-controls="side"><span aria-hidden="true">&lsaquo;</span> Details</button>
+
+            <!-- Notes: the source line and the UN disclaimer, always under the map -->
+            <footer id="map-footer">
+                <div class="footer-text">
+                    <p id="footer-source"><strong>Source:</strong> UN Comtrade; UNCTAD calculations.</p>
+                    <p class="map-disclaimer" id="map-disclaimer"><strong>Map:</strong> The boundaries and names shown and the designations used on this map do not imply official endorsement or acceptance by the United Nations. Dotted and dashed boundary lines represent approximate borders for which the final status has not yet been determined.</p>
+                    <p id="footer-notes" class="foot-notes clamp"></p>
+                </div>
+                <div class="footer-acts">
+                    <button id="notes-btn" class="btn-line notes-btn" type="button" aria-expanded="false" aria-controls="footer-notes">All notes</button>
+                    <button id="methodology-btn" class="btn-line" type="button">Methodology</button>
+                    <img class="footer-logo" src="assets/smep-logo.png" alt="SMEP programme" loading="lazy" decoding="async">
+                </div>
+            </footer>
+        </div>
+    </main>
+
+    <!-- ── Phone: views and details at the foot ── -->
+    <nav id="tabbar" aria-label="Views and details">
+        <button type="button" data-view="map">Map</button><button type="button" data-view="matrix">Matrix</button><button type="button" data-view="gap">Two reports</button><button type="button" data-view="table">Table</button><button type="button" data-page="side" class="first-page-tab">Details</button>
+    </nav>
+
+    <div id="tooltip" class="tip" aria-hidden="true"></div>
+
+    <!-- Visibility panel (spec 7.6) -->
+    <div id="visibility-modal" class="modal hidden">
+        <div class="modal-backdrop" id="visibility-modal-backdrop"></div>
+        <div class="modal-card" role="dialog" aria-labelledby="visibility-title">
+            <div class="modal-header">
+                <div class="modal-heads">
+                    <p class="modal-kicker">Spent batteries (HS 8549.11–19 and 8548.10), 2022&ndash;2024ᵖ, weight</p>
+                    <h2 class="modal-title" id="visibility-title">&mdash;</h2>
+                </div>
+                <button id="visibility-modal-close" class="btn-line btn-close" type="button" aria-label="Close">Close</button>
+            </div>
+            <div id="visibility-body" class="modal-body" tabindex="0" role="region" aria-label="HS code details"></div>
+        </div>
+    </div>
+
+    <!-- Methodology (renders docs/METHODOLOGY.md) -->
+    <div id="methodology-modal" class="modal hidden">
+        <div class="modal-backdrop" id="methodology-modal-backdrop"></div>
+        <div class="modal-card methodology-card" role="dialog" aria-label="Methodology and data notes">
+            <div class="modal-header">
+                <div class="modal-heads">
+                    <p class="modal-kicker">Global Battery Trade Monitor (v1, prototype)</p>
+                    <h2 class="modal-title">Methodology and data notes</h2>
+                </div>
+                <button id="methodology-modal-close" class="btn-line btn-close" type="button" aria-label="Close">Close</button>
+            </div>
+            <div class="modal-body method-body" id="methodology-body" tabindex="0" role="region" aria-label="Methodology text"></div>
+        </div>
+    </div>
+
+    <!-- Layers 1 and 2: the entry (#home) and one page per question (#q=<id>), src/pages.js -->
+    <div id="pages" class="hidden" role="region" aria-label="Questions"></div>
+
+    <!-- Story: one chapter at a time, over the stage (spec 7.7 cards inside) -->
+    <div id="story-overlay" class="hidden" role="region" aria-label="Story: batteries and spent batteries in international trade"></div>
+
+    <div id="loader"><div class="spin" aria-hidden="true"></div><p>Loading trade data&hellip;</p></div>
+
+    <script type="module" src="src/edition.js"></script>
+    <script type="module" src="src/main.js"></script>
+</body>
+</html>

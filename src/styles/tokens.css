@@ -1,0 +1,40 @@
+/* Design tokens. Copied from the Non-plastic dashboard (UNCTAD, ../Non-plastic/dashboard/css/style.css, :root),
+   the same UNCTAD InfoVis palette (blue / grey / yellow / green with their light and dark steps).
+   This is the ONLY style file with colour literals (spec 10.3-12); every other rule uses these names.
+   See docs/design/REDESIGN_V2.md §1. */
+:root{
+  --un-blue:#009edb; --un-blue-dark:#004990; --un-blue-darkest:#003a75; --un-blue-text:#0077b8; --un-blue-light:#7bb7e1; --un-blue-lightest:#c3dff0;
+  --un-green:#72bf44; --un-green-text:#27833a; --un-yellow:#fbaf17; --un-red:#eb1f48; --un-red-light:#f6a3b4; --un-red-text:#ab1d37;
+  --un-purple:#a066aa;
+  --unblue-bg:#f2f8fc; --unblue-bg-alt:#f3f8fd;
+  --grey:#aea29a; --grey-text:#6e6259; --grey-dark:#231f20; --grey-border:#ded9d5; --grey-bg:#ebeae6; --grey-rule:#cfc9c4; --grey-faint:#f1efed;
+  /* map (2026-11-05, option D: the map read too white on the user's monitor; land/sea contrast 1.33 → about 1.5,
+     "no data" no longer looks like the sea. Before: land #e3dfdb, hover #c8c2bb, nodata #f7f5f3, nodata-line #b8aea7,
+     sea white. Comparison: docs/design/screens/contrast/. The thin coastline of option D (a 0.5px stroke on every land
+     polygon) was left out: it made zoom / pan and the panel about 40% heavier at 4x CPU, docs/design/tools/perf_v6.mjs) */
+  --land:#d6d0c9; --land-hover:#bcb4ac; --nodata:#e8e3de; --nodata-line:#a99e96;
+  --sea:#eef5fb;
+  --sel:#004990; --sel-wash:#c5dfef;                 /* selection: navy ink, pale blue wash */
+  --caveat:#9a5e22;                                  /* UN yellow, darkest step, deepened until it reads as small text on white */
+  --white:#ffffff; --black:#000000;
+  --ink-60:rgba(0,0,0,.6);
+  --veil:rgba(255,255,255,.92);                      /* what lies on the map (legend, notes) sits on this */
+  --veil-blue:rgba(243,248,253,.92);
+  --sphere-edge:rgba(0,73,144,.18); --graticule:rgba(0,73,144,.07);
+  --backdrop:rgba(0,29,61,.35);
+  --font:Inter,"Helvetica Neue",Helvetica,Arial,sans-serif;
+  --shadow-lg:0 10px 40px rgba(0,0,0,.15);
+  --pop:0 0 0 1px var(--grey-border),0 8px 28px rgba(0,58,117,.12);   /* what floats above the page (menus, tooltips, dialogs): a hairline and a soft lift */
+
+  /* data hues */
+  --flow-DG:var(--un-blue); --flow-GD:var(--un-green); --flow-GG:var(--un-yellow); --flow-DD:var(--grey);
+  --rep-x:var(--un-blue-dark);                       /* exporter's report */
+  --rep-m:var(--un-blue);                            /* importer's report */
+  --est:var(--un-blue-text);                         /* experimental estimate */
+  --net-exp:var(--un-blue); --net-exp-light:var(--un-blue-lightest); --net-mid:var(--land-hover); --net-imp-light:var(--un-red-light); --net-imp:var(--un-red);
+  --hs-11:var(--un-blue-dark); --hs-12:var(--un-purple); --hs-13:var(--un-blue); --hs-14:var(--un-green); --hs-19:var(--grey);
+  --ts-bx:var(--un-blue-dark); --ts-bm:var(--un-blue-light); --ts-sx:var(--un-purple); --ts-sm:var(--un-yellow);
+  --bc-li:var(--un-blue); --bc-la:var(--un-blue-dark);
+  --rg-asia:var(--un-blue-dark); --rg-europe:var(--un-blue); --rg-americas:var(--un-blue-light); --rg-africa:var(--un-green); --rg-oceania:var(--un-yellow);   /* story: region of the exporter */
+  --bg-m:var(--un-blue-dark); --bg-x:var(--un-blue-light);                                     /* story: Bangladesh, imports / exports */
+}

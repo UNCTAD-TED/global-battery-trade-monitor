@@ -1,0 +1,24 @@
+/* Basel edition (src/edition.js): the guided story and region-specific parts are hidden for now. */
+.ed-basel .mode-tab[data-mode="story"],
+.ed-basel a[href^="#story"],
+.ed-basel #story-return,
+.ed-basel #story-overlay,
+.ed-basel #qp-extra,
+/* the matrix is built around Japan, ASEAN and India (meta.json matrix.order) */
+.ed-basel [data-ctl="view"][data-val="matrix"],
+.ed-basel #tabbar [data-view="matrix"] {
+    display: none !important;
+}
+
+/* the entry: four questions instead of five */
+.ed-basel .q-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 1250px) {
+    .ed-basel .q-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .ed-basel .q-item:nth-child(3) { border-left: 0; }
+    .ed-basel .q-item:nth-child(n+3) { border-top: 1px solid var(--grey-border); }
+    .ed-basel .q-item:nth-child(3) .q-block { padding-left: 0; }
+    .ed-basel .q-item:nth-child(4) { border-left: 1px solid var(--grey-border); }
+    .ed-basel .q-item:nth-child(4) .q-block { padding-left: 20px; }
+}
+html.phone.ed-basel .q-item:nth-child(n) { border-left: 0; }
+html.phone.ed-basel .q-item:nth-child(n) .q-block { padding: 16px 0; }

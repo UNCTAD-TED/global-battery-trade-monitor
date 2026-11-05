@@ -1,0 +1,28 @@
+{
+  "name": "global-battery-trade-monitor",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "start": "vite preview --port 8080 --host",
+    "test": "playwright test",
+    "dev:basel": "vite --mode basel",
+    "build:basel": "vite build --mode basel --outDir dist-basel",
+    "preview:basel": "vite preview --outDir dist-basel"
+  },
+  "dependencies": {
+    "d3": "7.9.0",
+    "topojson-client": "3.1.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.60.0",
+    "autoprefixer": "10.5.0",
+    "less": "4.6.4",
+    "playwright": "1.60.0",
+    "postcss": "8.5.12",
+    "tailwindcss": "3.4.19",
+    "vite": "5.4.21"
+  }
+}

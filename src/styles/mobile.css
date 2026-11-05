@@ -1,0 +1,127 @@
+/* Mobile v7 (docs/design/MOBILE_AUDIT.md, phase 2). Phone fixes that can be applied without the user's decision.
+   Loaded after style.css and motion.css (src/main.js), so equal selectors win here. Every rule is scoped to
+   html.phone or to (pointer:coarse): the desktop layout does not change. Not here, because they wait for the
+   user's decision: the one-line map disclaimer (M03 / D2), landscape (M02 / D3), table columns (M11 / D4),
+   Back closing the sheet (M09 / D5). */
+
+/* M22: iOS Safari must not enlarge text when the phone turns */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+
+/* M23: no scroll chaining from the sheet or a pane to the page (Android pull-to-refresh reloads the explorer) */
+html.phone body[data-layer="explore"]{overscroll-behavior:none}
+html.phone #side-body,html.phone #stage .view-pane,html.phone .popover,html.phone .modal-body{overscroll-behavior:contain}
+
+/* M17, M18: the map's legend and the map disclaimer only where a map is shown (not over Two reports or the table) */
+html.phone body:not([data-view="map"]) #stage .legend{display:none}
+html.phone body:not([data-view="map"]) #map-disclaimer{display:none}
+
+/* M08 (in part): the legend and "whole world" move up with the half sheet, and the views end above it.
+   html[data-sheet] is set by App.setSheet (src/main.js); 52% is the half sheet's height in the same containing block
+   (#stage). The notes strip with the 8-line UN disclaimer does not move yet: above the half sheet it would leave the
+   map about 50 px at 360 × 740. It follows once the user decides the compact disclaimer (D2). At "full" the sheet
+   covers the map. */
+html.phone #stage .legend,html.phone #stage .zoomctl,html.phone #stage .view-pane{transition:bottom var(--mo-ui) var(--mo-out)}
+html.phone[data-sheet="half"] #stage .legend,html.phone[data-sheet="half"] #stage .zoomctl,
+html.phone[data-sheet="half"] #stage .view-pane{bottom:calc(52% + 6px)}
+/* outside the map the notes strip is one row of links (M18): the views do not keep the disclaimer's height */
+html.phone body:not([data-view="map"]) #stage .view-pane{bottom:calc(var(--peekh,104px) + 52px)}
+html.phone[data-sheet="half"] body:not([data-view="map"]) #stage .view-pane{bottom:calc(52% + 6px)}
+
+/* M04: the control row on 360–414 px. Menu stays at the right end (sticky), Weight / Value is one switch that shows
+   the measure in use (App.bindEvents: a tap on it changes to the other), the labels are shorter, and the way back
+   to the question is an arrow at the start of the row (its name stays the question's title). */
+html.phone .ctlbar{gap:5px;padding-right:0}
+html.phone .ctl-btn{padding:4px 20px 4px 9px}
+html.phone .ctl-btn::after{right:8px}
+html.phone .ctl-v{max-width:112px}
+html.phone #ctl-menu-w{position:sticky;right:0;z-index:3;padding:0 8px 0 22px;margin-left:-5px;
+  background:linear-gradient(to right,transparent,var(--unblue-bg-alt) 22px)}
+/* Under 440 px the row cannot hold product, economies, year and a fixed Menu ("All economies" is long): the Menu then
+   stays at the end of the row, which fades at its right edge to show that it goes on, so the year is never covered */
+@media (max-width:439px){
+  html.phone #ctl-menu-w{position:static;background:none;padding:0 0 0 0;margin-left:0}
+  html.phone .ctlbar::after{content:"";position:sticky;right:0;flex:none;width:20px;margin-left:-5px;pointer-events:none;
+    background:linear-gradient(to right,transparent,var(--unblue-bg-alt))}
+}
+/* the Menu also holds the measure on a phone (App.renderControls) */
+#menu-meas{display:none}
+html.phone #menu-meas{display:flex}
+html.phone #meas .btn-toggle:not(.active){display:none}
+html.phone #meas .btn-toggle.active{gap:6px;color:var(--grey-dark);background-image:none}
+html.phone #meas .btn-toggle.active::after{content:"\21C4";font-size:15px;color:var(--un-blue-text)}
+html.phone #page-return{order:-1;font-size:0;min-width:44px;margin-left:0;display:flex;align-items:center;justify-content:center;padding:0}
+html.phone #page-return.hidden{display:none}
+html.phone #page-return > span{font-size:20px;line-height:1}
+
+/* M15: no text under 12 px on a phone. The explorer's notes strip (#map-footer p) keeps its size until the user
+   decides the compact disclaimer (D2): at 12 px it would take about 40 px more of the map. */
+html.phone :is(.qp-caption,.pg-src,.legend,.lg-text,.legend-section-label,.legend-flow-label,.cl-sub,.cl-rank,.cl-foot,
+  .qp-num span,.qp-rnote,.side-k,.sc-cite,.sc-sources,.sc-sources-h,.stc-foot,.stc-kicker,.stc-legend span,
+  .gv-kicker,.gv-rule,.gv-note,.gv-tag-key,.tv-note,.th-btn,.pop-lab,.pop-cap,.dock-note,.pizza-note,.group-h,
+  .kpi-sub,.cp-line,.cp-pval,.cp-ppct,.cp-hhi,.cp-band,.si-sublabel,.si-legend-item span,.cp-src,.cp-key,.cp-subhead,
+  .vb-meta,.vb-legend span,.hs-tot small,.st-caption,.st-headline small,.st-hl-k,.prov,.tl-year .prov){font-size:12px}
+html.phone #tooltip .tt-sub,html.phone #tooltip .tt-note{font-size:12px}
+html.phone .si-table,html.phone .tv-table th{font-size:12px}
+html.phone .notes-btn,html.phone #methodology-btn{font-size:13px}
+html.phone .q-thumb .q-tl{font-size:12px}
+/* chart labels on the question pages and in Two reports (SVG, not scaled). The map labels (10.5–11.8 px, bold with a
+   halo) are sized and placed by the map engines with the zoom, and stay as they are. */
+html.phone :is(.db-lab,.db-ratio){font-size:12px}
+html.phone :is(#qp-chart,#gap-container) .tick text{font-size:12px}
+
+/* M16: touch targets of at least 44 × 44 px */
+@media (pointer:coarse){
+  html.phone :is(.btn-line,.btn-toggle){min-height:44px}
+  html.phone .tb-seg .btn-toggle{min-width:44px;justify-content:center}
+  html.phone .ctl-btn{min-height:44px}
+  html.phone #meas .btn-toggle{min-height:44px}
+  html.phone .menu-item{min-height:44px}
+  html.phone #pop-menu .tb-seg .btn-toggle{min-width:44px;justify-content:center}
+  html.phone .footer-acts .btn-line{min-height:44px;display:inline-flex;align-items:center}
+  html.phone #side-toggle{min-height:44px;min-width:56px;top:2px}
+  html.phone .btn-x,html.phone .ctlbar .scope-chip .btn-x{min-width:44px;min-height:44px}
+  html.phone .first-hint button{width:44px;height:44px;top:0;right:0}
+  html.phone .first-hint{padding-right:48px}
+  html.phone .legend .lg-x{min-width:44px;min-height:44px}
+  html.phone .legend.min{min-height:44px}
+  html.phone .legend.min .lg-t{line-height:44px}
+  html.phone #fit-screen-btn{width:44px;height:44px}
+  html.phone .brand{padding:7px;margin:-7px -7px -7px -7px}
+  html.phone .qp-explore,html.phone .qp-go .btn-line{min-height:44px;display:inline-flex;align-items:center}
+  html.phone .popover .tb-sel,html.phone .popover .search input,html.phone #vp-scope{min-height:44px}
+  html.phone .cl-main{min-height:44px}
+  html.phone .cl-more{min-width:44px;min-height:44px}
+  html.phone .pg-way{min-height:44px}
+  html.phone .pg-find .search input{min-height:44px}
+  html.phone .tv-table td{padding-top:13px;padding-bottom:13px}
+  html.phone .tv-table .th-btn{min-height:40px}
+}
+
+/* M28: legend swatches keep their size when the label wraps */
+.vb-legend .sw,.hs-legend .sw,.stc-legend .sw{flex-shrink:0}
+
+/* M10: room under the entry's search field while its list is open, so the field can scroll to the top, above the
+   keyboard (src/main.js bindSearch) */
+html.phone #pages.search-open .pg-in{padding-bottom:70vh}
+
+/* M07: the sheet's head is a handle (drag or tap; App.bindSheetDrag). No page gesture starts on it, and the "More"
+   chevron points the way the sheet will go: up, or down at full. */
+html.phone #side .side-head{touch-action:none;user-select:none;-webkit-user-select:none}
+html.phone #side-toggle span[aria-hidden="true"]{display:inline-block;transform:rotate(-90deg);transition:transform var(--mo-micro) var(--mo-out)}
+html.phone[data-sheet="full"] #side-toggle span[aria-hidden="true"]{transform:rotate(90deg)}
+
+/* M20: in landscape the question page's picture is never taller than the screen under the header */
+html.phone .qp-visual:not(.is-chart){height:min(calc(100vw / 1.7),calc(100dvh - var(--hdrh,57px) - 24px))}
+
+/* M21: notch and home bar (viewport-fit=cover): content keeps clear of the side insets in landscape, and the last
+   line of the entry and question pages of the home bar */
+html.phone :is(.header-title,.pg-in,.qp-main,.qp-side,.qp-nav){padding-left:max(var(--pad-l,16px),env(safe-area-inset-left,0px));padding-right:max(var(--pad-r,16px),env(safe-area-inset-right,0px))}
+html.phone .header-title{--pad-l:12px;--pad-r:4px}
+html.phone .ctlbar{padding-left:max(8px,env(safe-area-inset-left,0px))}
+html.phone #ctl-menu-w{padding-right:max(8px,env(safe-area-inset-right,0px))}
+html.phone #map-footer{padding-left:max(10px,env(safe-area-inset-left,0px));padding-right:max(10px,env(safe-area-inset-right,0px))}
+html.phone #side{left:env(safe-area-inset-left,0px);right:env(safe-area-inset-right,0px)}
+html.phone #pages{padding-bottom:env(safe-area-inset-bottom,0px)}
+
+/* the ranked list's 20 / 40 stays one row with its 44 px targets */
+html.phone .cl-topn{flex-wrap:nowrap;flex-shrink:0}

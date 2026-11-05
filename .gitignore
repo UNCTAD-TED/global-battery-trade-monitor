@@ -1,0 +1,35 @@
+# Only the site is published (user, 2026-11-05): everything is ignored, then the site files are allowed back.
+# Not uploaded: .env (API key), data/ (raw and intermediate UN Comtrade data), scripts/ (data pipeline), docs/
+# (internal notes, screenshots), tests/, the spec, .claude/, builds, node_modules.
+/*
+!/.gitignore
+!/.github/
+!/README.md
+!/index.html
+!/package.json
+!/package-lock.json
+!/vite.config.js
+!/postcss.config.js
+!/tailwind.config.js
+!/src/
+!/public/
+# the methodology shown on the site is read from docs/ (src/methodology.js); nothing else in docs/
+!/docs/
+/docs/*
+!/docs/METHODOLOGY.md
+# the old 3D globe, no longer used
+/src/globeGL.js
+
+# never, wherever they are
+.env
+.env.*
+node_modules/
+dist/
+dist-basel/
+test-results/
+playwright-report/
+.DS_Store
+Thumbs.db
+desktop.ini
+__pycache__/
+*.pyc
