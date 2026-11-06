@@ -303,7 +303,7 @@ export const StoryCharts = {
         g.filter(d => d[mk] > 0).append('circle').attr('class', 'db-m').attr('r', 5).attr('cx', d => x(d[mk]));
         g.filter(d => d[xk] > 0).append('circle').attr('class', 'db-x').attr('r', 5).attr('cx', d => x(d[xk]));
         g.append('text').attr('class', 'db-ratio').attr('x', W - m.r + 8).attr('y', 4)
-            .text(d => (d[xk] > 0 && d[mk] > 0) ? `×${(d[mk] / d[xk]).toFixed(d[mk] / d[xk] >= 10 ? 0 : 2)}` : (d[xk] > 0 ? 'exporter only' : d.src === 'm' ? 'importer only' : 'no exporter record'));   // no map on a question page: say why there is one report
+            .text(d => (d[xk] > 0 && d[mk] > 0) ? `×${(d[mk] / d[xk]).toFixed(d[mk] / d[xk] >= 10 ? 0 : 2)}` : (d[xk] > 0 ? 'exporter only' : d.src === 'm' ? 'importer only' : narrow ? 'importer only' : 'no exporter record'));   // no map on a question page: say why there is one report (short on a phone)
         if (opts.grow) {
             // each row: the exporter's report first, then the line to the importer's report, then that report
             fadeIn(g.selectAll('circle.db-x').nodes(), { step: 40, ms: MS.micro, order: el => top.indexOf(d3.select(el).datum()) });

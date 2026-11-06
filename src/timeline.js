@@ -96,8 +96,10 @@ export const Timeline = {
             pt.append('line').attr('x1', 0).attr('y1', 0).attr('x2', 0).attr('y2', 5).attr('stroke', cssVar('--white')).attr('stroke-width', 1.6).attr('stroke-opacity', 0.8);
         }
         const p = DataLoader.product();
+        // a narrow chart (phones) has the short caption: the product is on its control just above (the long one ran off)
+        const unit = isW ? 'tonnes' : 'US$';
         svg.selectAll('text.tl-cap').data([0]).join('text').attr('class', 'tl-cap').attr('x', m.l).attr('y', 10)
-            .text(`World exports, as reported by exporters: ${p.label.charAt(0).toLowerCase() + p.label.slice(1)} · ${isW ? 'tonnes' : 'US$'}`);
+            .text(W < 480 ? `World exports, exporters’ reports · ${unit}` : `World exports, as reported by exporters: ${p.label.charAt(0).toLowerCase() + p.label.slice(1)} · ${unit}`);
         const fmt = METRIC_FORMAT[STATE.metric].fmt;
         const g = svg.selectAll('g.tl-col').data(rows, r => r.y).join(enter => {
             const e = enter.append('g').attr('class', 'tl-col');

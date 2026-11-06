@@ -368,7 +368,11 @@ const App = {
         if (s.product && DataLoader.product(s.product)) STATE.product = s.product;
         if (s.metric === 'value' || s.metric === 'weight') STATE.metric = s.metric;
         if (s.preset && STATE.meta.presets[s.preset]) STATE.preset = s.preset;
-        if (['map', 'matrix', 'gap', 'table'].includes(s.view)) STATE.view = s.view;
+        if (['map', 'matrix', 'gap', 'table'].includes(s.view)) {
+            // phones: a link to another view brings it into sight (an open sheet would cover it)
+            if (s.view !== STATE.view && isPhone() && this._sheet && this._sheet !== 'peek') this.setSheet('peek');
+            STATE.view = s.view;
+        }
         if (s.basis === 'reported' || (s.basis === 'estimated' && DataLoader.estimationAvailable())) STATE.basis = s.basis;
         if (s.region && REGIONS.includes(s.region)) STATE.region = s.region;
         if (STATE.preset !== 'GLOBAL') STATE.region = 'Global';
@@ -583,7 +587,9 @@ const App = {
         $('tabbar').addEventListener('click', (e) => {
             const b = e.target.closest('button');
             if (!b) return;
-            if (b.dataset.view) { this.onControl('view', b.dataset.view); return; }
+            // a view chosen at the foot comes into sight: an open sheet goes down to its peek (it covered the
+            // Two reports and Table views; 2026-11-06)
+            if (b.dataset.view) { if (this._sheet && this._sheet !== 'peek') this.setSheet('peek'); this.onControl('view', b.dataset.view); return; }
             if (b.dataset.page === 'side') this.setSheet(this._sheet === 'peek' || !this._sheet ? 'half' : 'peek');
         });
 
