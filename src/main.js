@@ -1346,8 +1346,8 @@ const App = {
             <p class="si-sublabel">† marks the importer’s report used on the map because the exporter did not report for that year. ${esc(twoReportsNote(STATE.metric))}</p>
             <div class="pair-scroll" tabindex="0" role="region" aria-label="Both directions, both reports, by year"><table class="si-table pair-table"><thead>
               <tr><th><span class="sr-only">Direction</span></th><th class="ac" colspan="2">${esc(nm(a))} → ${esc(nm(b))}</th><th class="ac" colspan="2">${esc(nm(b))} → ${esc(nm(a))}</th></tr>
-              <tr><th class="al">Year</th><th class="ar">${esc(nm(a))}’s export report</th><th class="ar">${esc(nm(b))}’s import report</th>
-                  <th class="ar">${esc(nm(b))}’s export report</th><th class="ar">${esc(nm(a))}’s import report</th></tr></thead>
+              <tr><th class="al">Year</th><th class="ar">Exporter’s report<span class="sr-only"> (${esc(nm(a))})</span></th><th class="ar">Importer’s report<span class="sr-only"> (${esc(nm(b))})</span></th>
+                  <th class="ar">Exporter’s report<span class="sr-only"> (${esc(nm(b))})</span></th><th class="ar">Importer’s report<span class="sr-only"> (${esc(nm(a))})</span></th></tr></thead>
               <tbody>${rows}</tbody></table></div>
             <div id="pair-chart"></div>`;
         enter($('arc-modal-body'), { y: 0, ms: MS.ui });

@@ -584,12 +584,14 @@ export const TradeMap = {
         this._renderTwin(key);
     },
 
-    // "Double entry" on the map: the drawn arc is the exporter's report; the importer's report of the
-    // same flow is drawn beside it as an outlined strand (same scale), bowing a little more.
+    // "Double entry" on the map: the importer's report of a selected flow was drawn beside its arc as an
+    // outlined strand. Switched off (user, 2026-11-06: "an additional line which is not needed"); both reports are
+    // in the flow's history, which opens on the same click. Set TWIN_ON to true to draw it again.
     _renderTwin(key) {
         if (!this.g) return;
         this.g.selectAll('.twin-layer').remove();
-        if (!key || STATE.basis === 'estimated') return;
+        const TWIN_ON = false;
+        if (!TWIN_ON || !key || STATE.basis === 'estimated') return;
         const d = (STATE.filteredData || []).find(f => `${f.e}|${f.i}` === key);
         if (!d || d.src !== 'x') return;
         const isW = STATE.metric === 'weight';

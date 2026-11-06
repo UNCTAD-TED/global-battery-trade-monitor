@@ -91,7 +91,7 @@ export const CorridorList = {
         }).join('');
         const nDag = flows.filter(d => d.src === 'm').length;
         const nEst = flows.filter(d => DataLoader.isEst(d)).length;
-        const twin = STATE.view === 'map' && STATE.basis !== 'estimated' ? '<div class="cl-foot">Select a flow to draw its importer’s report beside it on the map (outlined, when the two reports differ by more than 10%); › opens its history.</div>' : '';
+        const twin = STATE.view === 'map' && STATE.basis !== 'estimated' ? '<div class="cl-foot">Select a flow to highlight it on the map; › opens its history, with both reports.</div>' : '';
         const foot = twin + (nDag ? `<div class="cl-foot"><sup class="dag">†</sup> ${CONFIG.daggerNote}.</div>` : '')
             + (nEst ? `<div class="cl-foot"><span class="est-badge">est.</span> Experimental estimate; the line marks the 90% interval. See Methodology.</div>` : '');
         const prev = this._pct || new Map(), prevRank = this._rank || new Map();
