@@ -105,15 +105,17 @@ export const GapView = {
             const y = +(/translate\(0,([-\d.]+)\)/.exec(r.getAttribute('transform') || '') || [])[1];
             was.set(r.dataset.pair, { y, x: +r.querySelector('circle.db-x')?.getAttribute('cx'), m: +r.querySelector('circle.db-m')?.getAttribute('cx') });
         });
+        const rule = `<p class="gv-rule">${this.sort === 'diff'
+            ? `Order: the largest gap first, in ${STATE.metric === 'weight' ? 'tonnes' : 'US dollars'} (the “Gap” column: importer’s report minus exporter’s); only flows that both sides reported. The line between the dots shows the ratio on a log scale, so a long line can rank low when the flow is small.`
+            : 'Order: the largest flow first, by the larger of its two reports. The line between the dots shows how far apart the two reports are (log scale).'}</p>`;
+        // phone: the summary and the order note fold under "About these figures", so the rows come into sight (mobile v8)
+        const phone = document.documentElement.classList.contains('phone');
         this.el.innerHTML = `<div class="gv">
             <div class="gv-head">
               <div>
                 <p class="gv-kicker">Two reports of the same trade</p>
                 <h2 class="gv-title">${esc(p.label)} &middot; ${STATE.year}${isProvisional(STATE.year) ? ' (provisional)' : ''} &middot; ${METRIC_FORMAT[STATE.metric].label.toLowerCase()}</h2>
-                ${document.documentElement.classList.contains('phone') ? `<details class="gv-more"><summary>About these figures</summary><p class="gv-sum">${sumTxt} ${oneSide}</p></details>` : `<p class="gv-sum">${sumTxt} ${oneSide}</p>`}
-                <p class="gv-rule">${this.sort === 'diff'
-                    ? `Order: the largest gap first, in ${STATE.metric === 'weight' ? 'tonnes' : 'US dollars'} (the “Gap” column: importer’s report minus exporter’s); only flows that both sides reported. The line between the dots shows the ratio on a log scale, so a long line can rank low when the flow is small.`
-                    : 'Order: the largest flow first, by the larger of its two reports. The line between the dots shows how far apart the two reports are (log scale).'}</p>
+                ${phone ? `<details class="gv-more"><summary>About these figures</summary><p class="gv-sum">${sumTxt} ${oneSide}</p>${rule}</details>` : `<p class="gv-sum">${sumTxt} ${oneSide}</p>${rule}`}
               </div>
               <div class="gv-tools">
                 <div class="tb-seg gv-sort" role="group" aria-label="Order the rows by"><span class="gv-sortcap">Order by</span>

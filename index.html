@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <script>/* the phone layout is chosen before the first paint (as in the Non-plastic dashboard; same query in src/config.js, PHONE_Q) */
-    (function(){try{var d=document.documentElement,m=matchMedia,p=m("(max-width: 700px), (max-width: 1050px) and (pointer: coarse), (max-height: 500px) and (pointer: coarse)").matches;d.classList.toggle("phone",p);}catch(e){}})();</script>
+    (function(){try{var d=document.documentElement,m=matchMedia,p=m("(max-width: 700px), (max-width: 1050px) and (pointer: coarse), (max-height: 500px) and (pointer: coarse)").matches;d.classList.toggle("phone",p);d.classList.toggle("land",p&&m("(orientation: landscape) and (max-height: 500px)").matches);}catch(e){}})();</script>
     <title>Global Battery Trade Monitor</title>
     <meta name="description" content="Trade in batteries (HS 8507) and spent batteries (HS 8549.11–19; 8548.10 before HS 2022), 2016–2024. Source: UN Comtrade; UNCTAD calculations.">
     <link rel="icon" href="assets/unctad-icon.svg">
@@ -61,6 +61,8 @@
 
             <!-- Control bar: what / where / when / how -->
             <div class="ctlbar" id="ctlbar" role="toolbar" aria-label="Product, economies, year, measure and menu">
+                <!-- phone (docs/design/MOBILE_V8.md): one button that shows the choices and opens the Choose layer (#choose) -->
+                <button class="ctl-btn ctl-choose" id="ctl-choose" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="choose"><span class="ctl-v" id="ctl-choose-v">&mdash;</span><span class="ctl-k" id="ctl-choose-k"></span></button>
                 <div class="ctl" id="ctl-product-w">
                     <button class="ctl-btn" id="ctl-product" type="button" aria-expanded="false" aria-controls="pop-product" aria-haspopup="dialog"><span class="ctl-k">Product</span><span class="ctl-v" id="ctl-product-v">&mdash;</span></button>
                     <div class="popover pop-product hidden" id="pop-product" role="dialog" aria-label="Choose the product">
@@ -141,6 +143,7 @@
             <aside id="side" class="side" aria-label="Details">
                 <div class="side-head">
                     <span class="side-k" id="side-k">Details</span>
+                    <span class="side-line" id="side-line" aria-hidden="true"></span>
                     <button id="side-toggle" class="side-toggle" type="button" aria-expanded="true" aria-controls="side-body"><span class="st-txt">Hide details</span> <span aria-hidden="true">&rsaquo;</span></button>
                 </div>
                 <div class="side-body" id="side-body">
@@ -180,7 +183,7 @@
 
             <!-- Notes: the source line and the UN disclaimer, always under the map -->
             <footer id="map-footer">
-                <div class="footer-text">
+                <div class="footer-text" id="footer-text">
                     <p id="footer-source"><strong>Source:</strong> UN Comtrade; UNCTAD calculations.</p>
                     <p class="map-disclaimer" id="map-disclaimer"><strong>Map:</strong> The boundaries and names shown and the designations used on this map do not imply official endorsement or acceptance by the United Nations. Dotted and dashed boundary lines represent approximate borders for which the final status has not yet been determined.</p>
                     <p id="footer-notes" class="foot-notes clamp"></p>
@@ -189,15 +192,24 @@
                     <button id="notes-btn" class="btn-line notes-btn" type="button" aria-expanded="false" aria-controls="footer-notes">All notes</button>
                     <button id="methodology-btn" class="btn-line" type="button">Methodology</button>
                     <img class="footer-logo" src="assets/smep-logo.png" alt="SMEP programme" loading="lazy" decoding="async">
+                    <button id="foot-more" class="btn-line foot-more" type="button" aria-expanded="false" aria-controls="footer-text">more<span class="sr-only"> notes on this view</span></button>
                 </div>
             </footer>
         </div>
     </main>
 
     <!-- ── Phone: views and details at the foot ── -->
-    <nav id="tabbar" aria-label="Views and details">
-        <button type="button" data-view="map">Map</button><button type="button" data-view="matrix">Matrix</button><button type="button" data-view="gap">Two reports</button><button type="button" data-view="table">Table</button><button type="button" data-page="side" class="first-page-tab">Details</button>
+    <nav id="tabbar" aria-label="Views">
+        <button type="button" data-view="map">Map</button><button type="button" data-view="matrix">Matrix</button><button type="button" data-view="gap">Two reports</button><button type="button" data-view="table">Table</button>
     </nav>
+
+    <!-- ── Phone: the Choose layer (docs/design/MOBILE_V8.md). App.placeControls moves the Product, Economies and Year
+         controls (with their popovers) and the measure here on a phone, and back into the control bar on a desktop. -->
+    <div id="choose" class="choose hidden" role="dialog" aria-modal="true" aria-labelledby="choose-h">
+        <div class="ch-head"><h2 class="ch-h" id="choose-h">Choose the data</h2><button id="choose-done" class="btn-line ch-done" type="button">Done</button></div>
+        <div class="ch-tabs" id="choose-tabs"></div>
+        <div class="ch-foot" id="choose-foot"></div>
+    </div>
 
     <div id="tooltip" class="tip" aria-hidden="true"></div>
 

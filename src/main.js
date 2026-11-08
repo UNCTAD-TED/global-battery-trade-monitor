@@ -32,6 +32,13 @@ const $ = id => document.getElementById(id);
 const REGIONS = ['Global', 'Africa', 'Americas', 'Asia', 'Europe', 'Oceania'];
 const VIEWS = [['map', 'Map', 'Directed flows on the map, with the ranked list'], ['matrix', 'Matrix', 'Origin-destination matrix'], ['gap', 'Two reports', 'Exporter’s and importer’s reports of the same flows'], ['table', 'Table', 'The flows in view as a sortable table']];
 const POPS = ['product', 'eco', 'year', 'menu'];   // control bar popovers (docs/design/EXPLORER_V4.md)
+// Phones (docs/design/MOBILE_V8.md). In portrait the details are a bottom sheet (peek / half / full); in landscape
+// (a phone on its side, at most 500 px high) they are a column at the right, as on a desktop (the user's D3).
+const LAND_Q = '(orientation: landscape) and (max-height: 500px)';
+const isLand = () => document.documentElement.classList.contains('land');
+const sheetMode = () => isPhone() && !isLand();
+const HALF = 0.5;   // the half sheet's share of the stage (mobile.css: #side.sheet-half)
+const LEGEND_ICON = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><g stroke-linecap="round" stroke-width="2.4"><path d="M4 7h6" style="stroke:var(--flow-DG)"/><path d="M4 12h6" style="stroke:var(--flow-GD)"/><path d="M4 17h6" style="stroke:var(--flow-GG)"/></g><path d="M13 7h7M13 12h7M13 17h7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
 // HS codes as people read them: 854911 -> 8549.11, a range with an en dash, "or earlier" (the data files keep 6 digits)
 const hsShow = s => String(s || '').replace(/\b(\d{4})(\d{2})\b/g, '$1.$2').replace(/(\d)-(\d)/g, '$1–$2').replace('and earlier', 'or earlier');
 
@@ -63,7 +70,7 @@ const Hash = {
         if (STATE.basis === 'estimated') p.set('b', 'estimated');
         if (App._fromQ) p.set('q', App._fromQ);
         if (App.sideOpen === false && !isPhone()) p.set('d', '0');
-        history.replaceState(null, '', '#' + p.toString());
+        history.replaceState(history.state, '', '#' + p.toString());   // keeps the phone's Back marker (App.syncBack)
         App._routed = location.hash;
     },
 };
@@ -114,6 +121,7 @@ const App = {
         await this.update();
         $('loader').classList.add('hidden');
         this._booted = true;   // from now on a change of layer is animated (layerSwap)
+        this._armed = !!history.state?.bmLayer;   // a reload keeps the phone's Back marker (syncBack)
         if (h.country) this.openCountry(h.country);
         if (h.product && h.hs) this.openVisibility();
         this.syncMode();
@@ -125,8 +133,41 @@ const App = {
         const set = () => document.documentElement.style.setProperty('--hdrh', `${$('main-header').getBoundingClientRect().height}px`);
         set();
         new ResizeObserver(set).observe($('main-header'));
-        const mq = window.matchMedia(PHONE_Q);
-        mq.addEventListener?.('change', () => { document.documentElement.classList.toggle('phone', mq.matches); if (this.layer === 'explore') { TradeMap.init(); this.render(); } else this._sized = false; });
+        const mq = window.matchMedia(PHONE_Q), lq = window.matchMedia(LAND_Q);
+        const changed = () => {
+            const d = document.documentElement, was = [isPhone(), isLand()].join();
+            d.classList.toggle('phone', mq.matches);
+            d.classList.toggle('land', mq.matches && lq.matches);
+            if ([isPhone(), isLand()].join() === was) return;
+            this.placeControls();
+            // a phone turned: portrait has the sheet, landscape the column (the economy or the flow stays open)
+            if (sheetMode()) this.setSheet(STATE.selectedCountry || !$('arc-modal').classList.contains('hidden') ? 'half' : 'peek');
+            else { this.sideOpen = true; $('side-body').inert = false; if (isPhone()) this.setSheet('peek'); }
+            if (this.layer === 'explore') { this.layoutStage(); TradeMap.init(); this.render(); } else this._sized = false;
+        };
+        mq.addEventListener?.('change', changed);
+        lq.addEventListener?.('change', changed);
+    },
+
+    // Phones (docs/design/MOBILE_V8.md): the Product, Economies and Year controls, with their popovers, and the measure
+    // live in the Choose layer (#choose), opened by one summary button; on a desktop they are back in the control bar.
+    // The same elements move, so their ids, events and tests are the same in both places.
+    placeControls() {
+        const bar = $('ctlbar'), menu = $('ctl-menu-w'), chip = $('scope-chip');
+        const wraps = ['ctl-product-w', 'ctl-eco-w', 'ctl-year-w'].map($);
+        if (isPhone()) {
+            if (wraps[0].parentNode === $('choose-tabs')) return;
+            this.closePop(false);
+            $('choose-tabs').append(...wraps);
+            $('choose-foot').append($('meas-fld'));
+            $('ctl-choose').after(chip);   // the economy's × stays in the bar
+        } else {
+            if (wraps[0].parentNode === bar) return;
+            this.closeChoose(false);
+            wraps.forEach(w => bar.insertBefore(w, menu));
+            bar.insertBefore($('meas-fld'), menu);
+            $('ctl-eco').after(chip);
+        }
     },
 
     // v4: the stage is the whole screen. What floats over it (control bar, panel, view switcher, legend) is measured
@@ -135,12 +176,12 @@ const App = {
         const root = document.documentElement.style;
         const prev = [root.getPropertyValue('--sidew'), root.getPropertyValue('--footh'), root.getPropertyValue('--ctlh')].join();
         const side = $('side');
-        const phone = isPhone();
-        side.classList.toggle('closed', !phone && !this.sideOpen);
-        $('side-open').classList.toggle('hidden', phone || this.sideOpen);
-        const sw = phone ? 0 : this.sideOpen ? side.offsetWidth + 24 : $('side-open').offsetWidth + 16;
+        const sheet = sheetMode(), land = isLand();   // landscape phone: a column at the right edge, as on a desktop
+        side.classList.toggle('closed', !sheet && !this.sideOpen);
+        $('side-open').classList.toggle('hidden', sheet || this.sideOpen);
+        const sw = sheet ? 0 : this.sideOpen ? side.offsetWidth + (land ? 0 : 24) : $('side-open').offsetWidth + (land ? 0 : 16);
         root.setProperty('--sidew', `${Math.round(sw)}px`);
-        root.setProperty('--footh', `${Math.round($('map-footer').offsetHeight)}px`);
+        root.setProperty('--footh', `${Math.round(this.footH())}px`);
         root.setProperty('--ctlh', `${Math.round($('ctlbar').offsetHeight + 10)}px`);
         return prev !== [root.getPropertyValue('--sidew'), root.getPropertyValue('--footh'), root.getPropertyValue('--ctlh')].join();
     },
@@ -151,15 +192,20 @@ const App = {
         if (!area.width) return { top: 10, right: 10, bottom: 10, left: 10 };
         const bar = $('ctlbar').getBoundingClientRect();
         const top = Math.max(10, bar.bottom - area.top + 10);
-        if (isPhone()) {
+        if (sheetMode()) {
             // where the sheet will be, not where its height transition is (mobile M08). At "full" the map is covered;
-            // its camera keeps the half-sheet zone. The notes strip stays above the peek sheet.
+            // its camera keeps the half-sheet zone. The one-line map note sits on the sheet and moves with it (v8).
             const stage = $('stage').getBoundingClientRect();
-            const peek = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--peekh')) || 104;
-            const sheetTop = stage.bottom - (this._sheet === 'half' || this._sheet === 'full' ? stage.height * 0.52 : peek);
-            const footTop = stage.bottom - peek - $('map-footer').offsetHeight;
-            const bottom = Math.max(10, Math.min(area.height - top - 40, area.bottom - Math.min(sheetTop, footTop) + 6));
+            const sheetTop = stage.bottom - (this._sheet === 'half' || this._sheet === 'full' ? stage.height * HALF : this.peekH());
+            const footTop = sheetTop - this.footH();
+            const bottom = Math.max(10, Math.min(area.height - top - 40, area.bottom - footTop + 6));
             return { top, right: 6, bottom, left: 6 };
+        }
+        if (isPhone()) {
+            // landscape phone: the map is the part left of the column, down to the one-line map note
+            const right = Math.max(6, area.right - (this.sideOpen ? $('side') : $('side-open')).getBoundingClientRect().left + 6);
+            const footTop = area.bottom - this.footH();
+            return { top: Math.max(8, bar.bottom - area.top + 6), right, bottom: Math.max(10, area.bottom - footTop + 4), left: 6 };
         }
         const vs = $('viewsw').getBoundingClientRect();
         // where the panel (or its handle) will be, without the slide it may be making (src/styles/motion.css)
@@ -169,22 +215,40 @@ const App = {
         const right = Math.max(12, area.right - side.left + 12);
         return { top, right, bottom: Math.max(12, area.bottom - vs.top + 8), left: 12 };
     },
+    // the notes strip's height at rest (on a phone "more" opens it over the map, and the map is not fitted to that)
+    footH() {
+        const f = $('map-footer');
+        if (!isPhone()) return f.offsetHeight;
+        if (!f.classList.contains('open')) this._footh = f.offsetHeight;
+        return this._footh || 30;
+    },
+    peekH() { return parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--peekh')) || 56; },
 
     // ── v4 stage: popovers, the details panel, the one-time hint
     initStage() {
         TradeMap.zoneFn = () => this.visibleZone();
         // popovers: one open at a time; Escape or a click outside closes; focus goes in and comes back
+        this.placeControls();
         POPS.forEach(k => $(`ctl-${k}`).addEventListener('click', (e) => { e.stopPropagation(); this.togglePop(k); }));
+        // inside the Choose layer the popovers are its sections: a tap elsewhere in the layer keeps the open one
         document.addEventListener('mousedown', (e) => {
+            if (this._choose) { if (!$('choose').contains(e.target) && !e.target.closest?.('.modal')) this.closeChoose(false); return; }
             if (!this._pop) return;
             const w = $(`ctl-${this._pop}-w`);
             if (w && !w.contains(e.target)) this.closePop(false);
         });
         document.addEventListener('focusin', (e) => {
-            if (!this._pop) return;
+            if (!this._pop || this._choose) return;
             const w = $(`ctl-${this._pop}-w`);
             if (w && !w.contains(e.target) && !e.target.closest?.('.tip')) this.closePop(false);
         });
+        // phone: the summary button opens the Choose layer; Done, Escape or Back close it (changes apply at once)
+        $('ctl-choose').addEventListener('click', () => (this._choose ? this.closeChoose() : this.openChoose()));
+        $('choose-done').addEventListener('click', () => this.closeChoose());
+        // play shows the years on the map: the layer steps aside (Timeline's own handler runs after this one)
+        $('play').addEventListener('click', () => { if (this._choose && !Timeline._timer) setTimeout(() => this.closeChoose(), 0); });
+        // phone: the notes strip is one line ("more" opens the whole UN map note, the source and the notes over the map)
+        $('foot-more').addEventListener('click', () => this.setNotes(!$('map-footer').classList.contains('open')));
         $('eco-filter').addEventListener('input', () => this.renderEcoList());
         $('eco-filter').addEventListener('keydown', (e) => {
             if (e.key === 'ArrowDown') { e.preventDefault(); $('eco-list').querySelector('button')?.focus(); }
@@ -192,8 +256,8 @@ const App = {
         });
         $('eco-list').addEventListener('click', (e) => {
             const b = e.target.closest('button[data-iso]');
-            if (b) { this.closePop(false); this.openCountry(b.dataset.iso); return; }
-            if (e.target.closest('[data-eco-clear]')) { this.closePop(false); this.closeCountry(); }
+            if (b) { this.closePop(false); this.closeChoose(false); this.openCountry(b.dataset.iso); return; }
+            if (e.target.closest('[data-eco-clear]')) { this.closePop(false); this.closeChoose(false); this.closeCountry(); }
         });
         $('eco-list').addEventListener('keydown', (e) => {
             const items = [...$('eco-list').querySelectorAll('button')];
@@ -203,7 +267,7 @@ const App = {
             if (e.key === 'ArrowUp') { e.preventDefault(); (k ? items[k - 1] : $('eco-filter')).focus(); }
         });
         // the details panel: one handle; on a phone a sheet (peek, half, full)
-        $('side-toggle').addEventListener('click', () => (isPhone() ? this.cycleSheet() : this.setSide(false)));
+        $('side-toggle').addEventListener('click', () => (sheetMode() ? this.cycleSheet() : this.setSide(false)));
         $('side-open').addEventListener('click', () => this.setSide(true, true));
         this.bindSheetDrag();
         $('legend-toggle').addEventListener('click', () => {
@@ -214,7 +278,51 @@ const App = {
         if (isPhone()) this.setSheet('peek');
     },
 
-    togglePop(k) { if (this._pop === k) this.closePop(true); else this.openPop(k); },
+    // ── Phone: the Choose layer (docs/design/MOBILE_V8.md). A dialog under the header with the Product, Economies and
+    //    Year controls as its tabs (one section open at a time: the same popovers) and the measure at its foot.
+    openChoose(k = this._chooseTab || 'product') {
+        if (this._choose || !isPhone()) return;
+        this.closePop(false);
+        this._choose = true;
+        const c = $('choose');
+        c.classList.remove('hidden');
+        enter(c, { y: 10, ms: MS.ui });
+        $('ctl-choose').setAttribute('aria-expanded', 'true');
+        ['main', '#tabbar', '#main-header'].forEach(s => { const e = document.querySelector(s); if (e) e.inert = true; });
+        this.openPop(k);
+        this.syncBack();
+    },
+    closeChoose(focus = true) {
+        if (!this._choose) return;
+        if (this._pop) this._chooseTab = this._pop;
+        this.closePop(false);
+        this._choose = false;
+        $('choose').classList.add('hidden');
+        $('ctl-choose').setAttribute('aria-expanded', 'false');
+        const off = this.layer !== 'explore';
+        ['main', '#tabbar'].forEach(s => { const e = document.querySelector(s); if (e) e.inert = off; });
+        $('main-header').inert = false;
+        if (focus) $('ctl-choose').focus({ preventScroll: true });
+        this.syncBack();
+    },
+
+    // Phone: the notes strip opens over the map and closes again (its height at rest is what the map is fitted to)
+    setNotes(open) {
+        const f = $('map-footer');
+        if (open) this.footH();
+        f.classList.toggle('open', open);
+        $('foot-more').setAttribute('aria-expanded', String(open));
+        $('foot-more').firstChild.textContent = open ? 'less' : 'more';
+        $('footer-notes').classList.toggle('clamp', !open);
+        $('notes-btn').setAttribute('aria-expanded', String(open));
+        $('notes-btn').textContent = open ? 'Fewer notes' : 'All notes';
+        if (open) f.scrollTop = 0;
+    },
+
+    togglePop(k) {
+        if (this._pop === k) { if (!this._choose) this.closePop(true); return; }   // in the Choose layer a section stays open
+        this.openPop(k);
+    },
     openPop(k) {
         if (this._pop) this.closePop(false);
         this._pop = k;
@@ -223,6 +331,7 @@ const App = {
         if (k === 'eco') { $('eco-filter').value = ''; this.renderEcoList(); }
         if (k === 'year') Timeline.render(this._summary);
         const pop = $(`pop-${k}`);
+        if (this._choose) { pop.scrollTop = 0; $(`ctl-${k}`).focus({ preventScroll: true }); return; }   // the tab: no keyboard pops up
         const first = k === 'year' ? $('tl').querySelector('.tl-col.on')
             : ['input', 'select', 'button.active', 'button:not([disabled])', '[tabindex="0"]'].map(q => pop.querySelector(q)).find(Boolean);
         first?.focus({ preventScroll: true });
@@ -267,7 +376,7 @@ const App = {
 
     // Details panel (desktop: open / closed; phone: a sheet)
     setSide(open, focus = false) {
-        if (isPhone()) { this.setSheet(open ? 'half' : 'peek'); return; }
+        if (sheetMode()) { this.setSheet(open ? 'half' : 'peek'); return; }
         if (this.sideOpen === open && !$('side').classList.contains('closed') === open) return;
         this.sideOpen = open;
         $('side-toggle').setAttribute('aria-expanded', String(open));
@@ -283,12 +392,21 @@ const App = {
         ['peek', 'half', 'full'].forEach(x => side.classList.toggle(`sheet-${x}`, x === st));
         this._sheet = st;
         document.documentElement.dataset.sheet = st;   // what sits above the sheet moves with it (mobile.css, M08)
-        const tab = document.querySelector('#tabbar [data-page="side"]');   // the tab bar's "Details" opens the same sheet (M31)
-        if (tab) { tab.setAttribute('aria-controls', 'side'); tab.setAttribute('aria-expanded', String(st !== 'peek')); }
-        $('side-toggle').setAttribute('aria-expanded', String(st !== 'peek'));
-        $('side-toggle').querySelector('.st-txt').textContent = st === 'full' ? 'Less' : 'More';
+        const sheet = sheetMode();   // a landscape phone has the column: its toggle hides it, as on a desktop
+        $('side-toggle').setAttribute('aria-expanded', String(sheet ? st !== 'peek' : this.sideOpen !== false));
+        $('side-toggle').querySelector('.st-txt').textContent = !sheet ? 'Hide details' : st === 'full' ? 'Less' : 'More';
+        $('side-body').inert = sheet && st === 'peek';   // at peek only the head is in sight (mobile M31)
+        this.syncBack();
     },
-    cycleSheet() { this.setSheet({ peek: 'half', half: 'full', full: 'peek' }[this._sheet || 'peek']); },
+    cycleSheet() { this.setSheet({ peek: 'half', half: 'full', full: 'peek' }[this._sheet || 'peek']); this.frameSheet(); },
+    // Phone: after the sheet moved, the map keeps what is chosen in the part above it (a flow's two ends, the economy
+    // and its partners, or all the flows). A camera move only (src/map.js); at "full" the sheet covers the map.
+    frameSheet() {
+        if (!sheetMode() || STATE.view !== 'map' || this._sheet === 'full' || !TradeMap.zoomBehavior) return;
+        if (this._pair && !$('arc-modal').classList.contains('hidden')) TradeMap.frameIsos(this._pair);
+        else if (STATE.selectedCountry) TradeMap.frameFlows(STATE.selectedCountry);
+        else TradeMap.fitFlows();
+    },
 
     // Phone: the sheet's head is its handle (mobile M07). A tap on it changes the state, as "More" does; a drag moves
     // the sheet with the finger and it snaps to the nearest of peek / half / full on release (a quick flick goes to the
@@ -300,8 +418,7 @@ const App = {
         let drag = null, moved = false;
         const stops = () => {
             const H = $('stage').getBoundingClientRect().height;
-            const peek = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--peekh')) || 104;
-            return { peek, half: H * 0.52, full: H - 4 };
+            return { peek: this.peekH(), half: H * HALF, full: H - $('ctlbar').offsetHeight };   // full: up to the summary bar
         };
         const move = (e) => {
             if (!drag || e.pointerId !== drag.id) return;
@@ -326,9 +443,10 @@ const App = {
             side.style.transition = '';
             side.style.height = '';
             this.setSheet(st);
+            this.frameSheet();
         };
         head.addEventListener('pointerdown', (e) => {
-            if (!isPhone() || e.button > 0 || e.target.closest('button')) return;
+            if (!sheetMode() || e.button > 0 || e.target.closest('button')) return;
             const s = stops();
             drag = { id: e.pointerId, y0: e.clientY, ly: e.clientY, lt: performance.now(), v: 0, h0: side.getBoundingClientRect().height, s };
             moved = false;
@@ -338,7 +456,7 @@ const App = {
         head.addEventListener('pointerup', end);
         head.addEventListener('pointercancel', end);
         head.addEventListener('click', (e) => {
-            if (!isPhone() || e.target.closest('button')) return;
+            if (!sheetMode() || e.target.closest('button')) return;
             if (moved) { moved = false; return; }   // the click that ends a drag
             this.cycleSheet();
         });
@@ -370,7 +488,7 @@ const App = {
         if (s.preset && STATE.meta.presets[s.preset]) STATE.preset = s.preset;
         if (['map', 'matrix', 'gap', 'table'].includes(s.view)) {
             // phones: a link to another view brings it into sight (an open sheet would cover it)
-            if (s.view !== STATE.view && isPhone() && this._sheet && this._sheet !== 'peek') this.setSheet('peek');
+            if (s.view !== STATE.view && sheetMode() && this._sheet && this._sheet !== 'peek') this.setSheet('peek');
             STATE.view = s.view;
         }
         if (s.basis === 'reported' || (s.basis === 'estimated' && DataLoader.estimationAvailable())) STATE.basis = s.basis;
@@ -403,10 +521,9 @@ const App = {
 
     renderControls() {
         $('meas').innerHTML = this.tabs('metric', [['weight', 'Weight', 'Tonnes (reported weights)'], ['value', 'Value', 'Current US dollars']], STATE.metric);
-        // phone: Weight / Value is one switch that shows the measure in use (mobile.css, M04; the tap in bindEvents)
+        // phone: Weight / Value is at the foot of the Choose layer (#meas, moved there by placeControls), and also in the
+        // Menu (mobile M04)
         if (isPhone()) {
-            $('meas').querySelectorAll('.btn-toggle.active').forEach(b => { b.removeAttribute('aria-pressed'); b.setAttribute('aria-label', `Measure: ${b.textContent.toLowerCase()}. Switch to ${b.dataset.val === 'weight' ? 'value' : 'weight'}`); });
-            // and in the Menu, which stays at the right end of the row: the switch can be off-screen at 360–414 px
             let mm = $('menu-meas');
             if (!mm) {
                 mm = document.createElement('div');
@@ -434,6 +551,11 @@ const App = {
         $('ctl-eco').setAttribute('aria-label', `Economies: ${eco}. Choose the economies`);
         $('ctl-year-v').textContent = `${STATE.year}${isProvisional(STATE.year) ? 'ᵖ' : ''}`;
         $('ctl-year').setAttribute('aria-label', `Year: ${STATE.year}${isProvisional(STATE.year) ? ' (provisional)' : ''}. Choose the year`);
+        // phone: the one summary button (the product, then the economies, the year and the measure)
+        const meas = METRIC_FORMAT[STATE.metric].label.toLowerCase(), est = STATE.basis === 'estimated' ? ' · with estimates' : '';
+        $('ctl-choose-v').textContent = $('ctl-product-v').textContent;
+        $('ctl-choose-k').textContent = `${eco} · ${$('ctl-year-v').textContent} · ${meas}${est}`;
+        $('ctl-choose').setAttribute('aria-label', `${$('ctl-product-v').textContent}; ${eco}; ${STATE.year}${isProvisional(STATE.year) ? ' (provisional)' : ''}; ${meas}${est ? '; with experimental estimates' : ''}. Choose the data`);
         $('menu-topn').innerHTML = this.tabs('topn', CONFIG.topN.options.map(n => [n, String(n)]), STATE.topN);
         $('menu-csv-country').disabled = !STATE.selectedCountry;
         $('menu-csv-pair').disabled = !this._pair || $('arc-modal').classList.contains('hidden');
@@ -469,11 +591,6 @@ const App = {
     bindEvents() {
         document.addEventListener('click', (e) => {
             const c = e.target.closest('[data-ctl]');
-            if (c && c.tagName === 'BUTTON' && c.dataset.ctl === 'metric' && isPhone() && c.closest('#meas') && c.classList.contains('active')) {
-                // phone: the one Weight / Value switch changes to the other measure; the focus stays on the switch
-                this.onControl('metric', c.dataset.val === 'weight' ? 'value' : 'weight').then(() => $('meas').querySelector('.active')?.focus({ preventScroll: true }));
-                return;
-            }
             if (c && c.tagName === 'BUTTON') { this.onControl(c.dataset.ctl, c.dataset.val); return; }
             const a = e.target.closest('[data-act]');
             if (a) { if (a.tagName === 'A') e.preventDefault(); this.onAction(a.dataset.act); }
@@ -497,9 +614,9 @@ const App = {
         // Tab stays inside an open modal
         document.addEventListener('keydown', (e) => {
             if (e.key !== 'Tab') return;
-            const id = ['methodology-modal', 'visibility-modal'].find(k => !$(k).classList.contains('hidden'));
+            const id = ['methodology-modal', 'visibility-modal'].find(k => !$(k).classList.contains('hidden')) || (this._choose ? 'choose' : null);
             if (!id) return;
-            const f = [...$(id).querySelectorAll('.modal-card button, .modal-card select, .modal-card a[href], .modal-card [tabindex="0"]')].filter(x => x.offsetParent !== null);
+            const f = [...$(id).querySelectorAll(id === 'choose' ? 'button:not([disabled]), select, input, a[href], [tabindex="0"]' : '.modal-card button, .modal-card select, .modal-card a[href], .modal-card [tabindex="0"]')].filter(x => x.offsetParent !== null);
             if (!f.length) return;
             const first = f[0], last = f[f.length - 1];
             if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
@@ -511,17 +628,23 @@ const App = {
             if (e.key !== 'Escape') return;
             if (document.activeElement === $('search-input') && !$('search-list').classList.contains('hidden')) return;
             if (document.documentElement.classList.contains('menu-open')) { this.toggleMenu(false); return; }
+            if (this._choose) {   // a dialog opened from the layer closes first, then the layer
+                const m = ['visibility-modal', 'methodology-modal'].filter(id => !$(id).classList.contains('hidden'));
+                if (m.length) m.forEach(id => this.closeModal(id)); else this.closeChoose();
+                return;
+            }
+            if (isPhone() && $('map-footer').classList.contains('open')) { this.setNotes(false); $('foot-more').focus({ preventScroll: true }); return; }
             if (this._pop) { this.closePop(true); return; }
             const open = ['visibility-modal', 'methodology-modal'].filter(id => !$(id).classList.contains('hidden'));
             open.forEach(id => this.closeModal(id));
             if (open.length) return;
             if (!$('arc-modal').classList.contains('hidden')) { this.closeModal('arc-modal'); return; }
             if ($('insight-panel').classList.contains('open')) { this.closeCountry(); return; }
-            if (this.layer === 'explore' && $('side').contains(document.activeElement) && !isPhone()) { this.setSide(false); return; }
+            if (this.layer === 'explore' && $('side').contains(document.activeElement) && !sheetMode()) { this.setSide(false); return; }
             if (Story.isOpen()) this.onAction('explore');
         });
 
-        window.addEventListener('popstate', () => this.route());
+        window.addEventListener('popstate', () => this.onPop());
         // footer notes: two lines at rest, all of them on request
         $('notes-btn').addEventListener('click', () => {
             const open = $('footer-notes').classList.toggle('clamp') === false;
@@ -574,7 +697,7 @@ const App = {
             $('legend-panel').classList.toggle('min', min);
             $('legend-fold').setAttribute('aria-expanded', String(!min));
             $('legend-fold').setAttribute('aria-label', min ? 'Show the legend' : 'Fold the legend');
-            $('legend-fold').innerHTML = min ? '+' : '&minus;';
+            $('legend-fold').innerHTML = min ? (isPhone() ? LEGEND_ICON : '+') : '&minus;';   // phone: a 44 px key button over the map
         };
         $('legend-fold').addEventListener('click', () => fold(!$('legend-panel').classList.contains('min')));
         $('legend-panel').querySelector('.lg-t').addEventListener('click', () => fold(false));
@@ -589,8 +712,7 @@ const App = {
             if (!b) return;
             // a view chosen at the foot comes into sight: an open sheet goes down to its peek (it covered the
             // Two reports and Table views; 2026-11-06)
-            if (b.dataset.view) { if (this._sheet && this._sheet !== 'peek') this.setSheet('peek'); this.onControl('view', b.dataset.view); return; }
-            if (b.dataset.page === 'side') this.setSheet(this._sheet === 'peek' || !this._sheet ? 'half' : 'peek');
+            if (b.dataset.view) { if (this._sheet && this._sheet !== 'peek') this.setSheet('peek'); this.onControl('view', b.dataset.view); }
         });
 
         window.addEventListener('resize', () => {
@@ -637,10 +759,61 @@ const App = {
         }, { kind, dir, hold: to === 'explore' ? 120 : 260 });   // the explorer is ready at once: hold less (perf P2)
     },
 
+    // ── Phones, Back (the user's D5): Back first closes what is open over the map, one thing per press: the Choose
+    //    layer, then a flow, then the full sheet (it goes back to half or peek), then an economy. While anything is open,
+    //    one history entry of our own (state.bmLayer) sits on top of the explorer's entry ("armed"). Back lands on the
+    //    entry under it; onPop closes the top thing, keeps the rest of the view (product, year, ...) and writes it into
+    //    that entry, and arms again if something is still open. A thing closed with its own button gives the entry back
+    //    (history.back), so a later Back never seems to do nothing. The links (#p=…&c=…) are as before.
+    openLayers() {
+        const L = [];
+        if (STATE.selectedCountry && $('insight-panel').classList.contains('open')) L.push('country');
+        if (sheetMode() && this._sheet === 'full') L.push('full');
+        if (!$('arc-modal').classList.contains('hidden')) L.push('pair');
+        if (this._choose) L.push('choose');
+        return L;   // the last is on top
+    },
+    closeTopLayer() {
+        const top = this.openLayers().pop();
+        if (top === 'choose') this.closeChoose();
+        else if (top === 'pair') this.closeModal('arc-modal');
+        else if (top === 'full') { this.setSheet(STATE.selectedCountry ? 'half' : 'peek'); this.frameSheet(); }
+        else if (top === 'country') this.closeCountry();
+        return !!top;
+    },
+    syncBack() {
+        if (!isPhone() || this.layer !== 'explore' || !this._booted || this._popping) return;
+        const open = this.openLayers().length > 0;
+        if (open && !this._armed) { history.pushState({ bmLayer: 1 }, '', location.href); this._armed = true; }
+        else if (!open && this._armed) {
+            this._armed = false;
+            if (history.state?.bmLayer) { this._skipPop = true; history.back(); }   // still on our entry: give it back
+        }
+    },
+    onPop() {
+        const st = history.state;
+        if (this._skipPop) {   // our own history.back(): the view stays; the entry we are on gets it
+            this._skipPop = false;
+            this._armed = !!st?.bmLayer;
+            Hash.write();
+            return;
+        }
+        if (this._armed && !st?.bmLayer && this.layer === 'explore' && isPhone() && this.openLayers().length) {
+            this._armed = false;
+            this._popping = true;
+            try { this.closeTopLayer(); } finally { this._popping = false; }
+            Hash.write();      // the same view, without what was closed (a hashchange that may follow finds it routed)
+            this.syncBack();   // something is still open: arm again for the next Back
+            return;
+        }
+        this.route();
+    },
+
     async route() {
         const hash = location.hash;
         if (hash === this._routed) return;
         this._routed = hash;
+        this._armed = !!history.state?.bmLayer;   // a new link has no marker; a step back or forward may have ours
         const q = new URLSearchParams(hash.slice(1));
         if (q.has('story') || hash === '#story') {
             await this.layerSwap('story', () => {
@@ -699,6 +872,11 @@ const App = {
     setLayer(layer, qid) {
         this.layer = layer;
         document.body.dataset.layer = layer;
+        if (layer !== 'explore') {   // a phone leaves the explorer: nothing of it stays open, and Back is the page's again
+            this.closeChoose(false);
+            if ($('map-footer').classList.contains('open')) this.setNotes(false);
+            this._armed = false;
+        }
         const inert = layer !== 'explore';
         ['main', '#kpi-bar', '#map-footer', '#tabbar'].forEach(s => { const e = document.querySelector(s); if (e) e.inert = inert; });
         const qq = QUESTIONS.find(x => x.id === (layer === 'q' ? (qid || Pages.cur) : this._fromQ));
@@ -944,9 +1122,11 @@ const App = {
             // the pair history opens in the details panel (v4): not modal, the map stays usable
             $('side').classList.add('has-pair');
             this.setSide(true);
-            if (isPhone() && this._sheet === 'peek') this.setSheet('half');
+            if (sheetMode() && this._sheet === 'peek') this.setSheet('half');
+            this.frameSheet();   // phone: the flow's two ends in the part of the map above the sheet
             $('side-body').scrollTop = 0;
             $('arc-modal-close').focus({ preventScroll: true });
+            this.syncBack();
             return;
         }
         const card = m.querySelector('.modal-card');
@@ -955,13 +1135,17 @@ const App = {
         const first = id === 'methodology-modal' ? m.querySelector('.modal-body[tabindex="0"]') : card.querySelector('.btn-close');
         (first || card).focus({ preventScroll: true });
     },
-    closeModal(id) {
+    closeModal(id, reframe = true) {
         const m = $(id);
         if (m.classList.contains('hidden')) return;
         m.classList.add('hidden');
         if (id === 'arc-modal') {
             $('side').classList.remove('has-pair'); $('menu-csv-pair').disabled = true; $('side-k').textContent = STATE.selectedCountry ? 'Economy' : 'Summary';
             (STATE.selectedCountry ? ['insight-panel'] : ['world-panel', 'kpi-bar', 'corridor-list']).forEach((x, k) => enter($(x), { y: 4, delay: k * 30 }));   // what was there comes back
+            this.renderPeek();
+            // phone: a flow chosen on its own gives the map back (peek); with an economy the sheet stays at half
+            if (reframe && sheetMode()) { if (!STATE.selectedCountry && this._sheet === 'half') this.setSheet('peek'); this.frameSheet(); }
+            this.syncBack();
         }
         let r = this._modalReturn;
         this._modalReturn = null;
@@ -1076,6 +1260,30 @@ const App = {
             <p class="sub">${esc(scope)} &middot; ${STATE.year}${isProvisional(STATE.year) ? ' <span class="prov">(provisional)</span>' : ''} &middot; ${METRIC_FORMAT[STATE.metric].label.toLowerCase()} &middot; HS ${esc(hsShow(p.hs))}</p>
             <p class="side-hint">Select an economy on the map, or a flow below, for its details.</p>`;
         $('side-k').textContent = !$('arc-modal').classList.contains('hidden') ? 'Flow' : STATE.selectedCountry ? 'Economy' : 'Summary';
+        this.renderPeek();
+    },
+
+    // Phone: the sheet's head says in one line what the sheet holds (v8: at peek the sheet is its handle and this line)
+    renderPeek() {
+        const el = $('side-line');
+        if (!el) return;
+        const y = String(STATE.year), isW = STATE.metric === 'weight';
+        let html;
+        if (!$('arc-modal').classList.contains('hidden') && this._pair) {
+            html = `<b>${esc(nm(this._pair[0]))} ⇄ ${esc(nm(this._pair[1]))}</b> · both reports by year`;
+        } else if (STATE.selectedCountry) {
+            const r = this._summary?.economies?.[STATE.selectedCountry]?.[y] || {};
+            const v = k => (!r[k + 's'] || r[k + 's'] === 'none' ? null : (isW ? r[k + 'w'] : r[k]));
+            const parts = [['imports', v('m'), r.ms], ['exports', v('x'), r.xs]].filter(p => p[1] != null).sort((a, b) => b[1] - a[1])
+                .map(([l, val, st]) => `${l} ${fmtMetric(val)}${st === 'mirror' ? '†' : ''}`);
+            html = `<b>${esc(nm(STATE.selectedCountry))}</b> · ${parts.length ? parts.join(' · ') : `no report for ${y}`}`;
+        } else {
+            const w = this._summary?.world?.[y] || {};
+            const wE = DataLoader.estActive() ? (isW ? w.xwe : w.xe) : null;
+            const tot = wE != null ? `≈${fmtMetric(wE)} (est.)` : (isW ? w.xw : w.x) != null ? fmtMetric(isW ? w.xw : w.x) : '';
+            html = `<b>Summary</b>${tot ? ` · world exports ${tot}` : ''}`;
+        }
+        if (el.innerHTML !== html) el.innerHTML = html;
     },
 
     renderScopeChip() {
@@ -1290,8 +1498,9 @@ const App = {
         $('insight-panel').classList.add('open');
         $('insight-panel').inert = false;
         document.body.classList.add('insight-open');
-        if (!$('arc-modal').classList.contains('hidden')) this.closeModal('arc-modal');
-        if (isPhone()) { if (this._sheet === 'peek') this.setSheet('half'); } else if (!this.sideOpen) { this.sideOpen = true; this.layoutStage(); this.refitMap(); }
+        if (!$('arc-modal').classList.contains('hidden')) this.closeModal('arc-modal', false);   // the economy frames itself below
+        if (sheetMode()) { if (this._sheet === 'peek') this.setSheet('half'); } else if (!this.sideOpen) { this.sideOpen = true; this.layoutStage(); this.refitMap(); }
+        this.syncBack();
         $('side-body').scrollTop = 0;
         TradeMap.setFocus(iso);
         await this.update();
@@ -1315,6 +1524,8 @@ const App = {
         document.body.classList.remove('insight-open');
         const was = STATE.selectedCountry;
         STATE.selectedCountry = null;
+        if (sheetMode() && this._sheet === 'half' && $('arc-modal').classList.contains('hidden')) this.setSheet('peek');   // the map comes back
+        this.syncBack();
         TradeMap.clearFocus();
         if (was && STATE.view === 'map') TradeMap.zoomToRegion(STATE.region || 'Global');
         if (rerender) this.update();
@@ -1333,6 +1544,7 @@ const App = {
         if (STATE.view === 'map') { TradeMap.setHighlight(STATE.highlightPair); CorridorList.render(); }
         $('menu-csv-pair').disabled = false;
         $('side-k').textContent = 'Flow';
+        this.renderPeek();
         this.hideTooltip();
         const all = await DataLoader.loadAllYears(p.id);
         const isW = STATE.metric === 'weight';

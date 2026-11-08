@@ -18,6 +18,10 @@ const P = 'm';   // pattern id prefix
 // skips the removal while another transition is active or pending on the element, and the arcs' opacity
 // transition ('op', 600 ms) often still is: the arc stayed, and that transition then brought it back to full
 // opacity (an economy chosen right after a change left unrelated arcs on the map; fixed 2026-11-05).
+// Map labels: 10.5 px at the world view, growing gently with the zoom (10.5 px × √k on screen) but never above 14 px:
+// zoomed on one flow (k ≈ 4–9 on a phone) the names reached 21–31 px (2026-11-08). In map units, as the layer is scaled by k.
+function labelFs(k) { return Math.min(10.5 * Math.sqrt(k), 14) / k; }
+
 function leave(sel, ms) {
     return sel.interrupt().interrupt('op')
         .transition().duration(md(ms)).style('opacity', 0)
@@ -99,7 +103,7 @@ export const TradeMap = {
                     }).attr('stroke-width', 1 / k);
                     this.g.selectAll('.economy-point').attr('r', 1.8 / k);
                     this.g.selectAll('.map-label')
-                        .attr('font-size', (10.5 / Math.sqrt(k)) + 'px')
+                        .attr('font-size', labelFs(k) + 'px')
                         .attr('stroke-width', 3 / k);
                     this._placeHeads(k);
                 });
@@ -223,8 +227,13 @@ export const TradeMap = {
 
     // An economy is selected: frame the economy and all its drawn partners (no partner outside the frame).
     frameFlows(iso, pad = 28) {
+        this.frameIsos([iso, ...(STATE.filteredData || []).flatMap(d => [d.e, d.i])], pad);
+    },
+    // Frame these economies in the free part of the map (also a flow's two ends, when a phone's sheet covers the rest).
+    // A camera move only: nothing is drawn again until it ends.
+    frameIsos(list, pad = 28) {
         if (!this.zoomBehavior) return;
-        const isos = new Set([iso, ...(STATE.filteredData || []).flatMap(d => [d.e, d.i])]);
+        const isos = new Set(list);
         const pts = [...isos].map(i => STATE.countryCoords[i]).filter(Boolean).map(c => this.projection(c)).filter(Boolean);
         if (!pts.length) return;
         const [x0, x1] = d3.extent(pts, p => p[0]), [y0, y1] = d3.extent(pts, p => p[1]);
@@ -510,7 +519,7 @@ export const TradeMap = {
         if (STATE.selectedCountry) ranked.unshift(STATE.selectedCountry);
         const maxLabels = isPhone() ? 5 : this.width < 760 ? 7 : 10;
         // Greedy placement: biggest nodes first, skip labels that would overlap one already placed.
-        const fs = 10.5 / Math.sqrt(k);
+        const fs = labelFs(k);
         const boxes = [];
         const labelSet = new Set();
         const side = {};
@@ -545,7 +554,7 @@ export const TradeMap = {
             .attr('text-anchor', d => (side[d] === 'l' ? 'end' : 'start'))
             .attr('x', d => proj(d)[0] + (side[d] === 'l' ? -1 : 1) * (rScale(stats[d]?.total || 0) / k + 4))
             .attr('y', d => proj(d)[1] + 4)
-            .attr('font-size', (10.5 / Math.sqrt(k)) + 'px')
+            .attr('font-size', labelFs(k) + 'px')
             .attr('stroke-width', 3 / k);
 
         if (this.highlightKey) this.setHighlight(this.highlightKey);

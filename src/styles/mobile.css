@@ -1,8 +1,7 @@
 /* Mobile v7 (docs/design/MOBILE_AUDIT.md, phase 2). Phone fixes that can be applied without the user's decision.
    Loaded after style.css and motion.css (src/main.js), so equal selectors win here. Every rule is scoped to
-   html.phone or to (pointer:coarse): the desktop layout does not change. Not here, because they wait for the
-   user's decision: the one-line map disclaimer (M03 / D2), landscape (M02 / D3), table columns (M11 / D4),
-   Back closing the sheet (M09 / D5). */
+   html.phone or to (pointer:coarse): the desktop layout does not change. The v8 layers (the user's D2, D3, D5:
+   docs/design/MOBILE_V8.md) are in the last section. */
 
 /* M22: iOS Safari must not enlarge text when the phone turns */
 html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
@@ -15,56 +14,16 @@ html.phone #side-body,html.phone #stage .view-pane,html.phone .popover,html.phon
 html.phone body:not([data-view="map"]) #stage .legend{display:none}
 html.phone body:not([data-view="map"]) #map-disclaimer{display:none}
 
-/* M08 (in part): the legend and "whole world" move up with the half sheet, and the views end above it.
-   html[data-sheet] is set by App.setSheet (src/main.js); 52% is the half sheet's height in the same containing block
-   (#stage). The notes strip with the 8-line UN disclaimer does not move yet: above the half sheet it would leave the
-   map about 50 px at 360 × 740. It follows once the user decides the compact disclaimer (D2). At "full" the sheet
-   covers the map. */
-html.phone #stage .legend,html.phone #stage .zoomctl,html.phone #stage .view-pane{transition:bottom var(--mo-ui) var(--mo-out)}
-html.phone[data-sheet="half"] #stage .legend,html.phone[data-sheet="half"] #stage .zoomctl,
-html.phone[data-sheet="half"] #stage .view-pane{bottom:calc(52% + 6px)}
-/* outside the map the notes strip is one row of links (M18): the views do not keep the disclaimer's height */
-html.phone body:not([data-view="map"]) #stage .view-pane{bottom:calc(var(--peekh,104px) + 52px)}
-html.phone[data-sheet="half"] body:not([data-view="map"]) #stage .view-pane{bottom:calc(52% + 6px)}
+/* M08: the legend, the map tools, the notes strip and the views move with the half sheet: see the v8 section */
 
-/* M04: the control row on 360–414 px. Menu stays at the right end (sticky), Weight / Value is one switch that shows
-   the measure in use (App.bindEvents: a tap on it changes to the other), the labels are shorter, and the way back
-   to the question is an arrow at the start of the row (its name stays the question's title). */
-html.phone .ctlbar{gap:5px;padding-right:0}
-html.phone .ctl-btn{padding:4px 20px 4px 9px}
-html.phone .ctl-btn::after{right:8px}
-html.phone .ctl-v{max-width:112px}
-html.phone #ctl-menu-w{position:sticky;right:0;z-index:3;padding:0 8px 0 22px;margin-left:-5px;
-  background:linear-gradient(to right,transparent,var(--unblue-bg-alt) 22px)}
-/* Under 440 px the row cannot hold product, economies, year and a fixed Menu ("All economies" is long): the Menu then
-   stays at the end of the row, which fades at its right edge to show that it goes on, so the year is never covered */
-@media (max-width:439px){
-  html.phone #ctl-menu-w{position:static;background:none;padding:0 0 0 0;margin-left:0}
-  html.phone .ctlbar::after{content:"";position:sticky;right:0;flex:none;width:20px;margin-left:-5px;pointer-events:none;
-    background:linear-gradient(to right,transparent,var(--unblue-bg-alt))}
-  /* 2026-11-06: two rows, so Weight / Value and the Menu are always in sight (in one scrolling row they were cut at
-     the right edge: "We…"). Row 1: product and economies, sharing the width; row 2: year, measure and, at the right,
-     the Menu. The map below is laid out from the row's height (--ctlh, App.layoutStage). */
-  html.phone .ctlbar{flex-wrap:wrap;overflow-x:visible;row-gap:6px}
-  html.phone .ctlbar::after{display:none}
-  html.phone #ctl-product-w,html.phone #ctl-eco-w{flex:1 1 calc(50% - 3px);min-width:0}   /* half the row each: the rest wraps */
-  html.phone #ctl-product-w>.ctl-btn,html.phone #ctl-eco-w>.ctl-btn{flex:1 1 auto;min-width:0;width:100%}
-  html.phone #ctl-product-w .ctl-v,html.phone #ctl-eco-w .ctl-v{max-width:100%}
-  html.phone #ctl-year-w{flex-basis:auto}
-  html.phone #ctl-menu-w{margin-left:auto}
-}
-/* the Menu also holds the measure on a phone (App.renderControls) */
+/* M04: the measure is in the Menu too on a phone (App.renderControls); the control row itself is the v8 summary bar */
 #menu-meas{display:none}
 html.phone #menu-meas{display:flex}
-html.phone #meas .btn-toggle:not(.active){display:none}
-html.phone #meas .btn-toggle.active{gap:6px;color:var(--grey-dark);background-image:none}
-html.phone #meas .btn-toggle.active::after{content:"\21C4";font-size:15px;color:var(--un-blue-text)}
 html.phone #page-return{order:-1;font-size:0;min-width:44px;margin-left:0;display:flex;align-items:center;justify-content:center;padding:0}
 html.phone #page-return.hidden{display:none}
 html.phone #page-return > span{font-size:20px;line-height:1}
 
-/* M15: no text under 12 px on a phone. The explorer's notes strip (#map-footer p) keeps its size until the user
-   decides the compact disclaimer (D2): at 12 px it would take about 40 px more of the map. */
+/* M15: no text under 12 px on a phone (the notes strip too, now one line: v8) */
 html.phone :is(.qp-caption,.pg-src,.legend,.lg-text,.legend-section-label,.legend-flow-label,.cl-sub,.cl-rank,.cl-foot,
   .qp-num span,.qp-rnote,.side-k,.sc-cite,.sc-sources,.sc-sources-h,.stc-foot,.stc-kicker,.stc-legend span,
   .gv-kicker,.gv-rule,.gv-note,.gv-tag-key,.tv-note,.th-btn,.pop-lab,.pop-cap,.dock-note,.pizza-note,.group-h,
@@ -147,6 +106,144 @@ html.phone .tv-table:not(.all-cols) :is(td.tv-c-e,td.tv-c-i){white-space:normal}
 .gv-more[open]>summary{min-height:32px}
 /* question pages: the product and measure switches wrap instead of running off the edge */
 html.phone .qp-switches .tb-seg{flex-wrap:wrap;overflow-x:visible;-webkit-mask-image:none;mask-image:none}
-/* the popovers open under the whole control bar, one row or two (--ctlh, App.layoutStage): with two rows they covered
-   the year, the measure and the Menu, so the Menu could not be tapped to close itself */
+/* the Menu opens under the control bar (--ctlh, App.layoutStage); the other popovers are sections of the Choose layer (v8) */
 html.phone .popover{top:calc(var(--hdrh,57px) + var(--ctlh,66px) - 4px);max-height:calc(100dvh - var(--hdrh,57px) - var(--ctlh,66px) - 70px)}
+
+/* ═══ Mobile v8 (docs/design/MOBILE_V8.md, 2026-11-06): the map first, the rest in layers one or two taps away ═══
+   The user: "so much is crammed in that you cannot even see the map". Portrait, from the top: the header; one summary
+   bar (a 44 px button: the product, then economies · year · measure; the economy's ×; the Menu); the map; two small
+   buttons at its right edge (legend, whole view); the UN map note in one line ("more" opens it with the source and the
+   notes, D2); the sheet's peek (its handle and one line); the tab bar (Map, Two reports, Table). The Choose layer
+   (#choose) holds the Product, Economies and Year popovers as its sections and the measure at its foot. Landscape
+   (html.land, D3): the details in a column at the right, the views at the map's foot, no tab bar.
+   Desktop: #ctl-choose, #choose, #foot-more and .side-line are not shown; the rest is scoped to html.phone. */
+#ctl-choose,.side-line,.foot-more{display:none}
+html.phone{--peekh:56px}
+
+/* the summary bar: one flat strip with a hairline under it */
+html.phone .ctlbar{top:0;left:0;right:0;height:48px;max-width:none;flex-wrap:nowrap;overflow:visible;align-items:center;gap:0;
+  padding:2px max(2px,env(safe-area-inset-right,0px)) 2px max(4px,env(safe-area-inset-left,0px));background:var(--white);
+  border-bottom:1px solid var(--grey-border)}
+html.phone .ctlbar::after{display:none}
+html.phone #ctl-choose{display:flex;flex:1 1 auto;min-width:0;min-height:44px;box-shadow:none;background:none;padding:3px 30px 3px 8px;gap:1px}
+html.phone #ctl-choose::after{right:12px}
+html.phone #ctl-choose .ctl-v{display:block;max-width:100%;font-size:14px;line-height:1.2}
+html.phone #ctl-choose .ctl-k{display:block;max-width:100%;font-size:12.5px;line-height:1.2;color:var(--grey-text);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html.phone #ctl-choose:hover{background:var(--unblue-bg)}
+html.phone #ctl-choose[aria-expanded="true"]{box-shadow:inset 0 -2px 0 var(--un-blue)}
+html.phone .ctlbar .scope-chip{flex:none;padding:0}
+html.phone .ctlbar .scope-chip .btn-x{width:44px;height:44px;min-width:44px;box-shadow:none;background:none;font-size:20px;color:var(--grey-dark)}
+html.phone #ctl-menu-w{position:static;flex:none;margin:0;padding:0;background:none}
+html.phone .ctl-menu{width:44px;min-width:44px;min-height:44px;padding:0;justify-content:center;box-shadow:none;background:none}
+html.phone .ctl-menu svg{width:20px;height:20px}
+html.phone #story-return:not(.hidden){font-size:0;min-width:44px;min-height:44px;margin:0;padding:0;display:flex;align-items:center;justify-content:center;background:none;order:-1}
+html.phone #story-return > span{font-size:20px;line-height:1}
+html.phone #page-return{min-height:44px}
+
+/* the Choose layer: a dialog under the header. Its grid: the head; the three controls as tabs; the open section (one
+   of the popovers, the same elements); the measure. The wrappers do not box: their button and popover are placed in
+   the grid (display: contents). */
+html.phone #choose{position:fixed;left:0;right:0;top:var(--hdrh,57px);bottom:0;z-index:60;background:var(--white);
+  display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1.15fr) minmax(0,.7fr);grid-template-rows:auto auto minmax(0,1fr) auto;
+  padding:0 env(safe-area-inset-right,0px) 0 env(safe-area-inset-left,0px)}
+html.phone #choose.hidden{display:none}
+html.phone #choose :is(.ch-tabs,.ctl){display:contents}
+html.phone .ch-head{grid-row:1;grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:50px;padding:2px 4px 2px 16px}
+html.phone .ch-h{margin:0;font-size:17px;font-weight:800;color:var(--grey-dark)}
+html.phone .ch-done{min-height:44px;padding:0 14px;font-size:15px;font-weight:700;color:var(--un-blue-dark)}
+html.phone #choose .ctl-btn{grid-row:2;width:100%;min-width:0;min-height:54px;border-radius:0;box-shadow:inset 0 -1px 0 var(--grey-border);background:none;padding:6px 6px 8px 14px;justify-content:center}
+html.phone #choose #ctl-eco-w > .ctl-btn,html.phone #choose #ctl-year-w > .ctl-btn{border-left:1px solid var(--grey-faint);padding-left:10px}
+html.phone #choose .ctl-btn::after{display:none}
+html.phone #choose .ctl-btn .ctl-k{display:block;font-size:12px;line-height:1.3}
+html.phone #choose .ctl-btn .ctl-v{max-width:100%;font-size:14px}
+html.phone #choose .ctl-btn[aria-expanded="true"]{box-shadow:inset 0 -3px 0 var(--un-blue)}
+html.phone #choose .ctl-btn[aria-expanded="true"] .ctl-v{color:var(--un-blue-dark)}
+html.phone #choose .popover{grid-row:3;grid-column:1/-1;position:static;width:auto;max-height:none;min-height:0;overflow:auto;box-shadow:none;border-radius:0;padding:12px 16px 20px;transform-origin:top center}
+html.phone #choose .pop-year{padding-top:16px}
+html.phone #choose .dock-cols{grid-template-columns:minmax(0,1fr)}
+html.phone:not(.land) #choose .dock-list{order:-1}   /* portrait: the list to choose from first, the breakdown under it */
+html.phone #choose .dock-cols .pizza-wrap{max-width:200px}
+html.phone .ch-foot{grid-row:4;grid-column:1/-1;display:flex;align-items:center;gap:14px;min-height:56px;padding:4px 16px calc(4px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--grey-border)}
+html.phone .ch-foot::before{content:"Measure";content:"Measure" / "";font-size:13px;font-weight:600;color:var(--grey-text)}
+html.phone .ch-foot .ctl-meas{box-shadow:none;background:none;padding:0}
+html.phone .ch-foot #meas .btn-toggle{font-size:15px;padding:10px 12px 12px;min-width:64px}
+
+/* the map tools: two 44 px buttons at the right edge of the map, the legend above "whole view" */
+html.phone #stage .zoomctl{left:auto;right:max(6px,env(safe-area-inset-right,0px));bottom:calc(var(--peekh) + var(--footh,30px) + 8px);background:none;padding:0;gap:0}
+html.phone #fit-screen-btn{width:44px;height:44px;background:var(--white);box-shadow:var(--pop);border-radius:2px;font-size:19px;color:var(--grey-dark)}
+html.phone #stage .legend{left:auto;right:max(6px,env(safe-area-inset-right,0px));bottom:calc(var(--peekh) + var(--footh,30px) + 60px);
+  max-width:min(330px,calc(100% - 12px));max-height:calc(100% - var(--ctlh,58px) - var(--peekh) - var(--footh,30px) - 70px);overflow:auto}
+html.phone #stage .legend.min{padding:0;width:44px;height:44px;min-height:44px;overflow:visible;display:block}
+html.phone #stage .legend.min .lg-t{display:none}
+html.phone #stage .legend.min .lg-x{position:static;width:44px;height:44px;display:flex;align-items:center;justify-content:center;color:var(--grey-dark);padding:0}
+
+/* the notes strip: one line on the sheet (the UN map note on the map; the source on the other views). "more" opens it
+   upwards over the map with the whole note, the source and the notes on this view; its height at rest (--footh) is
+   what the map is fitted to. The full note is always in the page for screen readers (cut by CSS only). */
+html.phone #map-footer{bottom:var(--peekh);z-index:34;display:block;height:auto;padding:0 64px 0 max(12px,env(safe-area-inset-left,0px));gap:0;transition:bottom var(--mo-ui) var(--mo-out)}
+html.phone #map-footer .footer-text > p{font-size:12px;line-height:1.45;margin:0}
+html.phone #map-footer:not(.open) .footer-text > p{display:none}
+html.phone body[data-view="map"] #map-footer:not(.open) #map-disclaimer,
+html.phone body:not([data-view="map"]) #map-footer:not(.open) #footer-source{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:30px}
+html.phone #map-footer .footer-acts{display:contents}
+html.phone #map-footer .footer-acts > :not(.foot-more){display:none}
+html.phone .foot-more{display:flex;position:absolute;right:0;bottom:0;height:44px;min-height:44px;align-items:flex-end;padding:0 max(12px,env(safe-area-inset-right,0px)) 0 14px;font-size:13px;line-height:30px;font-weight:700;background:none}
+html.phone #map-footer .foot-more{align-items:flex-end}   /* on the note's line (M16 centred the footer's buttons) */
+html.phone #map-footer.open{max-height:calc(100% - var(--peekh) - var(--ctlh,58px) - 8px);overflow:auto;padding:10px 12px 52px max(12px,env(safe-area-inset-left,0px));box-shadow:var(--pop);background:var(--white)}
+html.phone #map-footer.open .footer-text > p{display:block;margin:0 0 8px}
+html.phone #map-footer.open #footer-source{display:block}   /* style.css hid the source on phones */
+html.phone body:not([data-view="map"]) #map-footer.open #map-disclaimer{display:none}
+html.phone #map-footer.open .footer-acts > #methodology-btn{display:inline-flex;position:absolute;left:max(12px,env(safe-area-inset-left,0px));bottom:0;min-height:44px;align-items:center}
+
+/* the sheet: at peek its handle and one line (what it holds); half is half the stage (App: HALF) */
+html.phone #side{height:var(--peekh)}
+html.phone #side.sheet-half{height:50%}
+/* full: up to the summary bar, which stays in sight and usable (axe target-size: the sheet covered the bar's buttons) */
+html.phone #side.sheet-full{height:calc(100% - 48px)}
+html.phone .side-head{min-height:var(--peekh);justify-content:space-between;gap:6px;padding:8px 2px 0 14px;border-bottom:1px solid var(--grey-faint)}
+html.phone .side-head::before{top:6px}
+html.phone .side-k{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+html.phone .side-line{display:block;flex:1 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:14px;color:var(--grey-dark)}
+html.phone .side-line b{font-weight:700}
+html.phone .side-toggle{position:static;flex:none;min-height:44px;font-size:14px;padding:0 12px}
+/* what sits on the sheet follows it to half (M08); at full the sheet covers the map */
+html.phone #stage .legend,html.phone #stage .zoomctl,html.phone #stage .view-pane{transition:bottom var(--mo-ui) var(--mo-out)}
+html.phone:not(.land)[data-sheet="half"] #map-footer{bottom:50%}
+html.phone:not(.land)[data-sheet="half"] #stage .zoomctl{bottom:calc(50% + var(--footh,30px) + 8px)}
+html.phone:not(.land)[data-sheet="half"] #stage .legend{bottom:calc(50% + var(--footh,30px) + 60px);max-height:calc(50% - var(--ctlh,58px) - var(--footh,30px) - 70px)}
+/* the views (Two reports, Table) start under the bar and end on the notes line */
+html.phone #stage .view-pane,html.phone body:not([data-view="map"]) #stage .view-pane{top:var(--ctlh,58px);bottom:calc(var(--peekh) + var(--footh,30px) + 4px)}
+html.phone:not(.land)[data-sheet="half"] #stage .view-pane{bottom:calc(50% + var(--footh,30px) + 4px)}
+
+/* the tab bar: the views only (the sheet's head opens the details), 48 px */
+html.phone body[data-layer="explore"] #explorer{bottom:calc(48px + env(safe-area-inset-bottom,0px))}
+html.phone #tabbar button{min-height:48px;font-size:14px}
+
+/* ── landscape phone (D3): the details in a column at the right, the views at the map's foot ── */
+html.phone.land .header-title{min-height:44px}
+html.phone.land .header-logo{width:26px;height:26px}
+html.phone.land #tabbar{display:none}
+html.phone.land body[data-layer="explore"] #explorer{bottom:0}
+html.phone.land .ctlbar{right:var(--sidew,0px)}
+html.phone.land #side{top:0;bottom:0;left:auto;right:0;width:min(42%,380px);height:auto;border-radius:0;box-shadow:none;border-left:1px solid var(--grey-border);padding-right:env(safe-area-inset-right,0px);z-index:35}
+html.phone.land #side.closed{display:none}
+html.phone.land .side-head{min-height:44px;padding:0 4px 0 14px;touch-action:auto;cursor:default}
+html.phone.land .side-head::before{display:none}
+html.phone.land .side-line{display:none}
+html.phone.land .side-k{position:static;width:auto;height:auto;clip:auto;overflow:visible}
+html.phone.land #side-toggle span[aria-hidden="true"]{transform:none}
+html.phone.land .side-open:not(.hidden){display:block;top:calc(var(--ctlh,58px) + 4px);min-height:44px}
+html.phone.land .viewsw{display:block;left:max(6px,env(safe-area-inset-left,0px));bottom:calc(var(--footh,30px) + 8px)}
+html.phone.land #map-footer{right:var(--sidew,0px);bottom:0}
+html.phone.land #map-footer.open{max-height:calc(100% - var(--ctlh,58px) - 8px)}
+html.phone.land #stage .zoomctl{right:calc(var(--sidew,0px) + 6px);bottom:calc(var(--footh,30px) + 8px)}
+html.phone.land #stage .legend{right:calc(var(--sidew,0px) + 6px);bottom:calc(var(--footh,30px) + 60px);max-height:calc(100% - var(--ctlh,58px) - var(--footh,30px) - 70px);max-width:min(330px,calc(100% - var(--sidew,0px) - 12px))}
+html.phone.land #stage .view-pane,html.phone.land body:not([data-view="map"]) #stage .view-pane{right:calc(var(--sidew,0px) + 6px);bottom:calc(var(--footh,30px) + 60px)}
+/* the Choose layer on its side: the measure sits in the head row, and the product's breakdown beside its list */
+html.phone.land #choose{grid-template-rows:auto auto minmax(0,1fr)}
+html.phone.land #choose .ctl-btn{min-height:46px;padding-top:3px;padding-bottom:4px}
+html.phone.land .ch-head{min-height:46px}
+html.phone.land .ch-foot{grid-row:1;grid-column:2;justify-self:start;min-height:46px;padding:0;border:0;gap:10px}
+html.phone.land .ch-foot #meas .btn-toggle{min-height:44px;padding:8px 10px 10px}
+html.phone.land #choose .dock-cols{grid-template-columns:minmax(0,190px) minmax(0,1fr);gap:4px 24px}
+html.phone.land #choose .dock-cols .pizza-wrap{max-width:190px;margin:0}
